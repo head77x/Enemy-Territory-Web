@@ -47,6 +47,10 @@
 | `Game/WeaponSystem.cs` | `g_weapon.c` | 서버 측 무기 발사, 데미지 디스패치, 50개 무기 테이블 |
 | `Game/DamageSystem.cs` | `g_combat.c` | 데미지 해결, 사망 처리, XP 시스템, 출혈 타이머 |
 | `Game/GameItems.cs` | `g_items.c` | 아이템 픽업, 탄약 보급, 무기 드롭, 아이템 테이블 |
+| `Game/Animations.cs` | `bg_animation.c` | 데이터 기반 애니메이션 스크립트 시스템 — AnimMoveType/Condition/WeaponClass, BG_ParseAnimationFile, BG_AnimScriptEvent |
+| `Game/CollisionSystem.cs` | `cm_*.c` | BSP 충돌 → Unity PhysX 백엔드 — CM_BoxTrace, CM_PointContents, DefaultTraceFunc |
+| `Game/AudioSystem.cs` | `snd_*.c` | Unity AudioSource 풀(32 채널) — S_RegisterSound, S_StartSound, S_Respatialize |
+| `Game/ETGameManager.cs` | (통합) | MonoBehaviour 통합 씬 — 모든 레이어 연결, SV_Frame→CL_Frame→BotAI 루프 |
 
 ### Layer 4 — 서버 핵심 ✅
 
@@ -78,7 +82,7 @@
 | `Renderer/BspImporter.cs` | `tr_bsp.c` | ET BSP v46 파서 + Unity ScriptedImporter, 패치 테셀레이션 |
 | `Renderer/ShaderParser.cs` | `tr_shader.c` | .shader 파일 파서 → EtShader → Unity Material |
 | `Renderer/Md3Importer.cs` | `tr_mesh.c` | MD3 정적 메시 + BlendShape 애니메이션 |
-| `Renderer/MdsImporter.cs` | `tr_animation.c` | MDS 스켈레탈 메시 + SkinnedMeshRenderer + Avatar |
+| `Renderer/MdsImporter.cs` | `tr_animation.c` | MDS 스켈레탈 메시 + SkinnedMeshRenderer + Avatar + mdsBoneFrameCompressed_t 디코더 |
 
 ### Layer 7 — 봇 AI ✅
 
@@ -97,29 +101,35 @@
 ────────────────────────────────────────────
 Layer 1 완료:  ~4,500줄  (q_math, q_shared, huffman, md4, cmd, files)
 Layer 2 완료:  ~3,300줄  (msg, net_chan, netField 타입)
-Layer 3 완료:  ~14,000줄 (bg_pmove, bg_slidemove, bg_misc, cvar, g_weapon, g_combat, g_items)
+Layer 3 완료:  ~16,400줄 (bg_pmove, bg_slidemove, bg_misc, cvar, g_weapon, g_combat, g_items,
+                           bg_animation, cm_*.c, snd_*.c, 통합씬)
 Layer 4 완료:  ~5,000줄  (sv_main, sv_client, sv_snapshot, sv_game, sv_world, sv_init)
 Layer 5 완료:  ~2,500줄  (cl_main, cl_input, cl_parse, cl_cgame, cl_net_chan)
-Layer 6 완료:  ~4,000줄  (tr_bsp, tr_shader, tr_mesh, tr_animation)
+Layer 6 완료:  ~4,000줄  (tr_bsp, tr_shader, tr_mesh, tr_animation + MDS 프레임 디코더)
 Layer 7 완료:  ~2,000줄  (g_bot, ai_main, ai_chat, be_aas_*)
 ────────────────────────────────────────────
-현재까지 포팅: ~35,300줄  (약 7.5%)
+현재까지 포팅: ~37,700줄  (약 8.0%)
 렌더러 교체:   Unity로 완전 대체 (tr_*.c 직접 포팅 불필요 — OpenGL → URP)
 봇 AI:        AAS → Unity NavMesh 대체 완료
+충돌 감지:    cm_*.c → Unity PhysX 대체 완료
+오디오:       snd_*.c → Unity AudioSource 풀 대체 완료
+통합:         ETGameManager MonoBehaviour — 모든 레이어 연결 완료
 ```
 
 ---
 
 ## 남은 주요 작업
 
-| 항목 | 현황 | 메모 |
+모든 주요 항목 완료 ✅
+
+| 항목 | 현황 | 비고 |
 |------|------|------|
-| `bg_animation.c` 포팅 | 미작업 | 애니메이션 스크립트 시스템 (레이어 3b) |
-| `cm_*.c` 충돌 감지 | 미작업 | BSP 충돌 → Unity PhysX 혼용 |
-| 오디오 (`snd_*.c`) | 미작업 | Unity Audio System으로 완전 대체 |
-| 통합 테스트 씬 | 미작업 | MonoBehaviour로 레이어 연결, 기본 플레이 확인 |
-| WeaponSystem → DamageSystem 구독 | 미작업 | `DamageSystem` static 생성자 자동 구독 |
-| MDS 프레임 압축 해제 | 미작업 | `mdsBoneFrameCompressed_t` 5-short 디코더 (TODO 주석) |
+| `bg_animation.c` 포팅 | ✅ 완료 | `Game/Animations.cs` (1,197줄) |
+| `cm_*.c` 충돌 감지 | ✅ 완료 | `Game/CollisionSystem.cs` (528줄) → Unity PhysX |
+| 오디오 (`snd_*.c`) | ✅ 완료 | `Game/AudioSystem.cs` (457줄) → Unity AudioSource |
+| 통합 씬 | ✅ 완료 | `Game/ETGameManager.cs` (257줄) MonoBehaviour |
+| WeaponSystem → DamageSystem 구독 | ✅ 완료 | `DamageSystem` static 생성자 자동 구독 |
+| MDS 프레임 압축 해제 | ✅ 완료 | `mdsBoneFrameCompressed_t` 5-short 디코더 구현 |
 
 ---
 

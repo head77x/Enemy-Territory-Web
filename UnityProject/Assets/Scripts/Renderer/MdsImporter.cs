@@ -72,15 +72,17 @@ public struct MdsTag
 
 public class MdsData
 {
-    public string       Name;
-    public int          NumFrames;
-    public int          NumBones;
-    public float        LodScale;
-    public float        LodBias;
-    public int          TorsoParent; // bone index
-    public MdsBone[]    Bones;
-    public MdsSurface[] Surfaces;
-    public MdsTag[]     Tags;
+    public string         Name;
+    public int            NumFrames;
+    public int            NumBones;
+    public float          LodScale;
+    public float          LodBias;
+    public int            TorsoParent; // bone index
+    public MdsBone[]      Bones;
+    public MdsSurface[]   Surfaces;
+    public MdsTag[]       Tags;
+    public Vector3[]      FrameOrigins;       // root origin per frame (Unity space)
+    public Quaternion[][] FrameBoneAngles;    // per-frame per-bone rotation (Unity space)
 
     // -----------------------------------------------------------------------
     // Load from raw bytes
@@ -153,32 +155,51 @@ public class MdsData
         }
 
         // --- Frames --------------------------------------------------------
-        // Full frame decompression (mdsBoneFrameCompressed_t) is complex — each
-        // compressed bone frame is 5 shorts (angles[3] + ofsAngles[2]).  We parse
-        // the per-frame root translation from the frame header and skip bone data
-        // for now (marked TODO: full skeletal animation).
-        //
-        // mdsFrame_t header (20 bytes):
+        // mdsFrame_t header (28 bytes):
         //   float localOrigin[3]  (12 bytes)
         //   float radius          (4 bytes)
-        //   float parentOffset[3] (12 bytes)  ← root translation relative to parent
-        // Followed by numBones × mdsBoneFrameCompressed_t (5 shorts = 10 bytes each).
-        const int compressedBoneSize = 10; // 5 × sizeof(short)
-        const int frameHeaderSize    = 28; // 3×4 + 4 + 3×4
-        int frameTotalSize = frameHeaderSize + numBones * compressedBoneSize;
+        //   float parentOffset[3] (12 bytes)
+        // Followed by numBones × mdsBoneFrameCompressed_t (5 shorts = 10 bytes each):
+        //   short angles[3]    — pitch/yaw/roll packed as short → angle * 65536/360
+        //   short ofsAngles[2] — offset angles (pitch/yaw only) packed the same way
+        const int compressedBoneSize = 10;
+        const int frameHeaderSize    = 28;
 
-        // We only store root origins (sufficient for static preview / import).
-        var frameOrigins = new Vector3[numFrames];
+        // Decoded per-frame bone data stored for SkinnedMeshRenderer animation
+        mds.FrameOrigins    = new Vector3[numFrames];
+        mds.FrameBoneAngles = new Quaternion[numFrames][];
+
         ms.Position = ofsFrames;
         for (int f = 0; f < numFrames; f++)
         {
             long frameStart = ms.Position;
-            var etOrigin  = new Vector3(r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
-            float radius  = r.ReadSingle();
+            var etOrigin    = new Vector3(r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
+            float radius    = r.ReadSingle();
             var etParentOfs = new Vector3(r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
-            frameOrigins[f] = EtToUnity(etOrigin);
-            // Skip compressed bone frames (TODO: decompress for full animation)
-            ms.Position = frameStart + frameTotalSize;
+            mds.FrameOrigins[f] = EtToUnity(etOrigin);
+
+            // Decompress bone frames (mdsBoneFrameCompressed_t)
+            var boneRots = new Quaternion[numBones];
+            for (int b = 0; b < numBones; b++)
+            {
+                // Each angle component: short → degrees via SHORT2ANGLE (value * 360/65536)
+                float pitch = r.ReadInt16() * (360f / 65536f);
+                float yaw   = r.ReadInt16() * (360f / 65536f);
+                float roll  = r.ReadInt16() * (360f / 65536f);
+                // ofsAngles: additional pitch/yaw offset applied to bone (for torso twist etc.)
+                float ofsPitch = r.ReadInt16() * (360f / 65536f);
+                float ofsYaw   = r.ReadInt16() * (360f / 65536f);
+
+                // ET uses ZYX Euler order (yaw=Z, pitch=Y, roll=X in ET coords)
+                // Convert to Unity Quaternion (ET X=fwd,Y=left,Z=up → Unity X=right,Y=up,Z=fwd)
+                // Apply offset angles first, then base rotation
+                var baseRot   = Quaternion.Euler(pitch + ofsPitch, yaw + ofsYaw, roll);
+                // Remap to Unity space: swap axes via a fixed permutation
+                boneRots[b]   = RemapEtBoneRotation(baseRot);
+            }
+            mds.FrameBoneAngles[f] = boneRots;
+
+            ms.Position = frameStart + frameHeaderSize + numBones * compressedBoneSize;
         }
 
         // --- Tags (mdsBoneInfo_t reused; tag entries share the bone list) --

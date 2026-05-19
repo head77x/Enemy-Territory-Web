@@ -92,44 +92,94 @@
 | `BotAI/BotChat.cs` | `ai_chat.c` | 음성 명령 처리, 채팅 응답 테이블 |
 | `BotAI/PathFinding.cs` | `be_aas_*.c` | AAS → Unity NavMesh 브릿지, 경로 계획 API |
 
+### Layer 9 — 서버 게임 로직 ✅
+
+| C# 파일 | 원본 C 파일 | 설명 |
+|---------|-----------|------|
+| `Server/ServerGameLogic.cs` | `g_main.c`, `g_active.c`, `g_client.c`, `g_spawn.c` | GEntity/GClient, G_InitGame/RunFrame, ClientConnect/Spawn/Disconnect |
+| `Server/MissileSystem.cs` | `g_missile.c` | 8종 투사체 발사, G_RunMissile, BulletFire hitscan, G_RadiusDamage |
+| `Server/MoverSystem.cs` | `g_mover.c` | MoverState, 8종 SP_func_* (door/plat/train/rotating/button/explosive) |
+| `Server/GameScript.cs` | `g_script.c`, `g_script_actions.c` | .script 파서, 14개 액션 핸들러, ScriptEventType |
+| `Server/GameCommands.cs` | `g_cmds.c`, `g_misc.c` | 15개 클라이언트 명령, 투표/채팅, 21개 엔티티 스폰 함수 |
+| `Server/GameMatch.cs` | `g_match.c`, `g_session.c`, `g_stats.c`, `g_fireteams.c`, `g_antilag.c` | 매치/세션/스탯/화력팀(8팀×6원)/안티랙 히스토리 |
+| `Server/GameEntities.cs` | `g_target.c`, `g_trigger.c`, `g_utils.c`, `g_alarm.c` | G_Find/UseTargets, 12개 target_*, 11개 trigger_*, 8존 알람 시스템 |
+| `Server/GameTeam.cs` | `g_team.c`, `g_vote.c`, `g_referee.c`, `g_teammapdata.c`, `g_multiview.c` | 팀 관리, 투표 시스템(30s/50%+1), 심판, 목표 상태, 스폰 웨이브 |
+| `Server/GameProps.cs` | `g_props.c`, `g_svcmds.c`, `bg_tracemap.c`, `bg_animgroup.c`, `bg_sscript.c` | 건설/파괴 오브젝트, 서버 콘솔 명령, 높이맵, 사운드 스크립트 |
+
+### Layer 10 — 클라이언트 게임(cgame) ✅
+
+| C# 파일 | 원본 C 파일 | 설명 |
+|---------|-----------|------|
+| `Client/CGameMain.cs` | `cg_main.c`, `cg_snapshot.c`, `cg_predict.c` | CGameState/CGameSharedState, 스냅샷 처리, pmove 클라이언트 예측 |
+| `Client/CGameEntities.cs` | `cg_ents.c`, `cg_players.c`, `cg_event.c` | CentityState, 엔티티 보간, 플레이어 애니메이션, 12개 이벤트 핸들러 |
+| `Client/CGameView.cs` | `cg_view.c`, `cg_draw.c`, `cg_marks.c`, `cg_localents.c` | 카메라/FOV/줌, HUD 시스템, 데칼 풀(500), 로컬 엔티티 풀(512) |
+| `Client/CGameWeapons.cs` | `cg_weapons.c`, `cg_effects.c` | WeaponRenderInfo[64], 머즐 플래시, 8종 폭발 ParticleSystem 효과 |
+| `Client/CGameAtmospheric.cs` | `cg_atmospheric.c`, `cg_particles.c`, `cg_trails.c` | 비/눈 ParticleSystem, 4096 파티클 풀, 128 LineRenderer 트레일 시스템 |
+| `Client/CGameFireteams.cs` | `cg_fireteams.c`, `cg_fireteamoverlay.c`, `cg_commandmap.c`, `cg_consolecmds.c` | 화력팀 UI, 커맨드맵 아이콘, 콘솔 명령 등록 |
+| `Client/CGameUI.cs` | `cg_scoreboard.c`, `cg_limbopanel.c`, `cg_debriefing.c`, `cg_popupmessages.c` | 스코어보드, 림보패널(사망 후 스폰 선택), 디브리핑, 팝업 10-slot 링 버퍼 |
+| `Client/CGameServerCmds.cs` | `cg_servercmds.c`, `cg_playerstate.c`, `cg_spawn.c`, `cg_flamethrower.c`, `cg_multiview.c` | 서버 명령 디스패치, 데미지 피드백, 화염방사기 파티클, 4분할 관전 |
+| `Client/CGameExtra.cs` | `cg_character.c`, `cg_info.c`, `cg_window.c`, `cg_newDraw.c`, `cg_drawtools.c`, `cg_statsranksmedals.c` | 캐릭터/스킨, 로딩 화면, 4종 창 시스템, HUD 드로 툴, 훈장 표시 |
+
+### Layer 11 — UI 시스템 ✅
+
+| C# 파일 | 원본 C 파일 | 설명 |
+|---------|-----------|------|
+| `Client/UISystem.cs` | `ui_main.c`, `ui_shared.c`, `ui_atoms.c`, `ui_players.c`, `ui_gameinfo.c` | Stack 메뉴 내비게이션, .menu 스크립트 파서, 서버 브라우저, 아레나 정보 |
+
 ---
 
 ## 변환 진행률
 
 ```
-전체 원본 C 소스: ~473,000줄 (456 파일)
-────────────────────────────────────────────
-Layer 1 완료:  ~4,500줄  (q_math, q_shared, huffman, md4, cmd, files)
-Layer 2 완료:  ~3,300줄  (msg, net_chan, netField 타입)
-Layer 3 완료:  ~16,400줄 (bg_pmove, bg_slidemove, bg_misc, cvar, g_weapon, g_combat, g_items,
-                           bg_animation, cm_*.c, snd_*.c, 통합씬)
-Layer 4 완료:  ~5,000줄  (sv_main, sv_client, sv_snapshot, sv_game, sv_world, sv_init)
-Layer 5 완료:  ~2,500줄  (cl_main, cl_input, cl_parse, cl_cgame, cl_net_chan)
-Layer 6 완료:  ~4,000줄  (tr_bsp, tr_shader, tr_mesh, tr_animation + MDS 프레임 디코더)
-Layer 7 완료:  ~2,000줄  (g_bot, ai_main, ai_chat, be_aas_*)
-────────────────────────────────────────────
-현재까지 포팅: ~37,700줄  (약 8.0%)
-렌더러 교체:   Unity로 완전 대체 (tr_*.c 직접 포팅 불필요 — OpenGL → URP)
+전체 원본 C 소스: ~473,000줄 (456 파일)       C# 파일: 70개, 33,124줄
+────────────────────────────────────────────────────────────────────
+Layer 1  완료:  ~4,500줄  (q_math, q_shared, huffman, md4, cmd, files)
+Layer 2  완료:  ~3,300줄  (msg, net_chan, netField 타입)
+Layer 3  완료:  ~16,400줄 (bg_pmove, bg_slidemove, bg_misc, cvar, g_weapon,
+                            g_combat, g_items, bg_animation, cm_*.c, snd_*.c, 통합씬)
+Layer 4  완료:  ~5,000줄  (sv_main, sv_client, sv_snapshot, sv_game, sv_world, sv_init)
+Layer 5  완료:  ~2,500줄  (cl_main, cl_input, cl_parse, cl_cgame, cl_net_chan)
+Layer 6  완료:  ~4,000줄  (tr_bsp, tr_shader, tr_mesh, tr_animation)
+Layer 7  완료:  ~2,000줄  (g_bot, ai_main, ai_chat, be_aas_*)
+Layer 9  완료:  ~6,200줄  (g_main, g_active, g_client, g_spawn, g_missile, g_mover,
+                            g_script+actions, g_cmds, g_misc, g_match, g_session,
+                            g_stats, g_fireteams, g_antilag, g_target, g_trigger,
+                            g_utils, g_alarm, g_team, g_vote, g_referee,
+                            g_teammapdata, g_multiview, g_props, g_svcmds,
+                            bg_tracemap, bg_animgroup, bg_sscript)
+Layer 10 완료:  ~6,400줄  (cg_main, cg_snapshot, cg_predict, cg_ents, cg_players,
+                            cg_event, cg_view, cg_draw, cg_marks, cg_localents,
+                            cg_weapons, cg_effects, cg_atmospheric, cg_particles,
+                            cg_trails, cg_fireteams, cg_fireteamoverlay,
+                            cg_commandmap, cg_consolecmds, cg_scoreboard,
+                            cg_limbopanel, cg_debriefing, cg_popupmessages,
+                            cg_servercmds, cg_playerstate, cg_spawn,
+                            cg_flamethrower, cg_multiview, cg_character,
+                            cg_info, cg_window, cg_newDraw, cg_drawtools,
+                            cg_statsranksmedals)
+Layer 11 완료:  ~700줄   (ui_main, ui_shared, ui_atoms, ui_players, ui_gameinfo)
+────────────────────────────────────────────────────────────────────
+현재까지 포팅: ~50,500줄  (약 10.7%)
+렌더러 교체:   Unity URP로 완전 대체 (OpenGL → URP, tr_*.c 불필요)
 봇 AI:        AAS → Unity NavMesh 대체 완료
 충돌 감지:    cm_*.c → Unity PhysX 대체 완료
 오디오:       snd_*.c → Unity AudioSource 풀 대체 완료
-통합:         ETGameManager MonoBehaviour — 모든 레이어 연결 완료
 ```
 
 ---
 
-## 남은 주요 작업
+## 남은 작업 (소규모)
 
-모든 주요 항목 완료 ✅
-
-| 항목 | 현황 | 비고 |
+| 항목 | 원본 | 메모 |
 |------|------|------|
-| `bg_animation.c` 포팅 | ✅ 완료 | `Game/Animations.cs` (1,197줄) |
-| `cm_*.c` 충돌 감지 | ✅ 완료 | `Game/CollisionSystem.cs` (528줄) → Unity PhysX |
-| 오디오 (`snd_*.c`) | ✅ 완료 | `Game/AudioSystem.cs` (457줄) → Unity AudioSource |
-| 통합 씬 | ✅ 완료 | `Game/ETGameManager.cs` (257줄) MonoBehaviour |
-| WeaponSystem → DamageSystem 구독 | ✅ 완료 | `DamageSystem` static 생성자 자동 구독 |
-| MDS 프레임 압축 해제 | ✅ 완료 | `mdsBoneFrameCompressed_t` 5-short 디코더 구현 |
+| `g_cmds_ext.c` | ~812줄 | 확장 클라이언트 명령 (GameCommands.cs에 통합 가능) |
+| `g_character.c` / `g_config.c` | ~300줄 | 서버측 캐릭터/설정 (스텁 수준) |
+| `g_save.c` / `g_mem.c` | ~200줄 | 저장/메모리 (Unity PlayerPrefs로 대체) |
+| `cg_missionbriefing.c` | ~401줄 | 미션 브리핑 UI (CGameUI에 통합 가능) |
+| `cg_panelhandling.c` | ~309줄 | 패널 핸들러 (CGameWindows에 통합 가능) |
+| `cg_sound.c` | ~2,079줄 | cgame 사운드 (AudioSystem에 대부분 통합됨) |
+| `cg_polybus.c` | ~93줄 | 폴리곤 버스 (렌더러 대체로 불필요) |
+| `ui_syscalls.c` / `cg_syscalls.c` | syscall 브릿지 | Unity에서 직접 호출로 대체 완료 |
 
 ---
 

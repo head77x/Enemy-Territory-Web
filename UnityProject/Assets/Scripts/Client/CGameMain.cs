@@ -407,7 +407,7 @@ namespace ET.Client
             s_pmInput.Ps.CopyFrom(CG.Snap.Ps);
             s_pmInput.Trace            = CollisionSystem.DefaultTraceFunc;
             s_pmInput.PointContents    = null;
-            s_pmInput.TraceMask        = SurfaceFlags.MASK_PLAYERSOLID;
+            s_pmInput.TraceMask        = Contents.MaskPlayerSolid;
             s_pmInput.GameType         = (int)CGS.GameType;
             s_pmInput.PmoveFixed       = CvarSystem.Get("pmove_fixed", "0",  CvarFlags.None).IntValue;
             s_pmInput.PmoveMsec        = CvarSystem.Get("pmove_msec",  "8",  CvarFlags.None).IntValue;

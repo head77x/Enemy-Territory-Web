@@ -1,0 +1,16 @@
+{
+    "name": "ET.Game",
+    "rootNamespace": "ET.Game",
+    "references": [
+        "GUID:ET.Core",
+        "GUID:ET.Network"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

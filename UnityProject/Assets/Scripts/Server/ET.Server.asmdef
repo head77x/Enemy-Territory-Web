@@ -1,0 +1,14 @@
+{
+    "name": "ET.Server",
+    "rootNamespace": "ET.Server",
+    "references": [
+        "ET.Core",
+        "ET.Network",
+        "ET.Game"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "autoReferenced": true
+}

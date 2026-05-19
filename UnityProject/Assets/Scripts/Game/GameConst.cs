@@ -133,43 +133,60 @@ namespace ET.Game
         public const int MAX_PERSISTANT       = 16;
 
         // -------------------------------------------------------
-        // Weapon IDs (wp_t)
+        // Weapon IDs (wp_t) — exact values from bg_public.h
+        // WP_NUM_WEAPONS = 50 (WolfXP multiplayer)
         // -------------------------------------------------------
-        public const int WP_NONE             = 0;
-        public const int WP_KNIFE            = 1;
-        public const int WP_LUGER            = 2;
-        public const int WP_MP40             = 3;
-        public const int WP_GRENADE_LAUNCHER = 4;
-        public const int WP_PANZERFAUST      = 5;
-        public const int WP_FLAMETHROWER     = 6;
-        public const int WP_COLT             = 7;
-        public const int WP_THOMPSON         = 8;
-        public const int WP_GRENADE_PINEAPPLE= 9;
-        public const int WP_STEN             = 10;
-        public const int WP_MEDIC_SYRINGE    = 11;
-        public const int WP_AMMO             = 12;
-        public const int WP_MORTAR           = 13;
-        public const int WP_MOBILE_MG42      = 14;
-        public const int WP_SILENCER         = 15;
-        public const int WP_AKIMBO_COLT      = 16;
-        public const int WP_AKIMBO_LUGER     = 17;
-        public const int WP_GPG40            = 18;
-        public const int WP_M7               = 19;
-        public const int WP_GARAND           = 20;
-        public const int WP_SATCHEL          = 42;
-        public const int WP_SATCHEL_DET      = 43;
-        public const int WP_MOBILE_MG42_SET  = 44;
-        public const int WP_MORTAR_SET       = 45;
-        public const int WP_MEDIC_ADRENALINE = 46;
-        public const int WP_DYNAMITE         = 47;
-        public const int WP_GARAND_SCOPE     = 42;
-        public const int WP_K43_SCOPE        = 43;
-        public const int WP_FG42SCOPE        = 44;
-        public const int WP_KAR98            = 23;
-        public const int WP_K43              = 24;
-        public const int WP_FG42             = 33;
-        public const int WP_CARBINE          = 25;
-        public const int MAX_WEAPONS         = 64;
+        public const int WP_NONE                  = 0;
+        public const int WP_KNIFE                 = 1;
+        public const int WP_LUGER                 = 2;
+        public const int WP_MP40                  = 3;
+        public const int WP_GRENADE_LAUNCHER      = 4;
+        public const int WP_PANZERFAUST           = 5;
+        public const int WP_FLAMETHROWER          = 6;
+        public const int WP_COLT                  = 7;
+        public const int WP_THOMPSON              = 8;
+        public const int WP_GRENADE_PINEAPPLE     = 9;
+        public const int WP_STEN                  = 10;
+        public const int WP_MEDIC_SYRINGE         = 11;
+        public const int WP_AMMO                  = 12;
+        public const int WP_ARTY                  = 13;
+        public const int WP_SILENCER              = 14;
+        public const int WP_DYNAMITE              = 15;
+        public const int WP_SMOKETRAIL            = 16;
+        public const int WP_MAPMORTAR             = 17;
+        public const int WP_MEDKIT                = 19;
+        public const int WP_BINOCULARS            = 20;
+        public const int WP_PLIERS                = 21;
+        public const int WP_SMOKE_MARKER          = 22;
+        public const int WP_KAR98                 = 23;
+        public const int WP_CARBINE               = 24;
+        public const int WP_GARAND                = 25;
+        public const int WP_LANDMINE              = 26;
+        public const int WP_SATCHEL               = 27;
+        public const int WP_SATCHEL_DET           = 28;
+        public const int WP_TRIPMINE              = 29;
+        public const int WP_SMOKE_BOMB            = 30;
+        public const int WP_MOBILE_MG42           = 31;
+        public const int WP_K43                   = 32;
+        public const int WP_FG42                  = 33;
+        public const int WP_DUMMY_MG42            = 34;
+        public const int WP_MORTAR                = 35;
+        public const int WP_LOCKPICK              = 36;
+        public const int WP_AKIMBO_COLT           = 37;
+        public const int WP_AKIMBO_LUGER          = 38;
+        public const int WP_GPG40                 = 39;
+        public const int WP_M7                    = 40;
+        public const int WP_SILENCED_COLT         = 41;
+        public const int WP_GARAND_SCOPE          = 42;
+        public const int WP_K43_SCOPE             = 43;
+        public const int WP_FG42SCOPE             = 44;
+        public const int WP_MORTAR_SET            = 45;
+        public const int WP_MEDIC_ADRENALINE      = 46;
+        public const int WP_AKIMBO_SILENCEDCOLT   = 47;
+        public const int WP_AKIMBO_SILENCEDLUGER  = 48;
+        public const int WP_MOBILE_MG42_SET       = 49;
+        public const int WP_NUM_WEAPONS           = 50;
+        public const int MAX_WEAPONS              = 64;
 
         // -------------------------------------------------------
         // Weapon states

@@ -395,6 +395,46 @@ namespace ET.Core
         }
 
         // -------------------------------------------------------
+        // Public instance API for pre-seeded message Huffman (used by HuffmanMsg)
+        // -------------------------------------------------------
+
+        /// <summary>Seeds both internal trees (call during init for each frequency count).</summary>
+        public void AddRef(byte ch)
+        {
+            AddRef(_compressor, ch);
+            AddRef(_decompressor, ch);
+        }
+
+        /// <summary>
+        /// Encode one symbol into data[] at bit offset.
+        /// Mirrors Huff_offsetTransmit: sends via tree, then does a simplified weight++ (no rebalancing).
+        /// </summary>
+        public void OffsetTransmit(int ch, byte[] data, ref int offset)
+        {
+            Transmit(_compressor, ch, data, ref offset);
+            // ET uses a simplified weight++ instead of full AddRef on the compressor side
+            int sym = ch & 0xFF;
+            if (_compressor.Loc[sym] != null)
+                _compressor.Loc[sym].Weight++;
+        }
+
+        /// <summary>
+        /// Decode one symbol from data[] at bit offset.
+        /// Mirrors Huff_offsetReceive: traverses tree, handles NYT escape, then calls full AddRef.
+        /// </summary>
+        public void OffsetReceive(byte[] data, ref int offset, out int ch)
+        {
+            Receive(_decompressor.Tree, out ch, data, ref offset);
+            if (ch == NYT)
+            {
+                ch = 0;
+                for (int i = 7; i >= 0; i--)
+                    ch |= GetBit(data, ref offset) << i;
+            }
+            AddRef(_decompressor, (byte)(ch & 0xFF));
+        }
+
+        // -------------------------------------------------------
         // Static one-shot helpers (bit-level, mirrors Huff_putBit/getBit)
         // -------------------------------------------------------
         public static void PutBitStatic(int bit, byte[] fout, ref int offset)

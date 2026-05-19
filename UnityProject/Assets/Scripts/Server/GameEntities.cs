@@ -178,7 +178,7 @@ namespace ET.Server
             ent.Use = (self, other, activator) =>
             {
                 if (activator == null) return;
-                activator.Die?.Invoke(activator, activator, activator);
+                activator.Die?.Invoke(activator, activator, "killed");
             };
         }
 
@@ -403,7 +403,10 @@ namespace ET.Server
 
             ent.Use = (self, other, activator) =>
             {
-                GameScript.G_ScriptAction(sn, act, activator);
+                // Find the named entity and fire its script trigger event.
+                var target = GameUtils.G_Find(null, "targetname", sn);
+                if (target != null)
+                    GameScript.G_Script_ScriptEvent(target, ScriptEventType.Trigger, act);
             };
         }
 
@@ -461,7 +464,7 @@ namespace ET.Server
         }
 
         // Core touch callback shared by trigger_multiple / trigger_once.
-        private static void Touch_Multi(GEntity self, GEntity other, TraceResult trace)
+        private static void Touch_Multi(GEntity self, GEntity other)
         {
             if (other == null || other.Client == null) return;
             if (!TriggerTeamCheck(self, other)) return;
@@ -488,7 +491,7 @@ namespace ET.Server
         // --------------------------------------------------------------------
         public static void SP_trigger_once(GEntity ent)
         {
-            ent.Touch = (self, other, trace) =>
+            ent.Touch = (self, other) =>
             {
                 if (other == null || other.Client == null) return;
                 if (!TriggerTeamCheck(self, other)) return;
@@ -534,7 +537,7 @@ namespace ET.Server
             GameUtils.G_SetMovedir(ref ent.Angles, ref movedir);
             Vector3 dir = movedir;
 
-            ent.Touch = (self, other, trace) =>
+            ent.Touch = (self, other) =>
             {
                 if (other?.Client == null) return;
                 var ps = other.Client.PS;
@@ -550,7 +553,7 @@ namespace ET.Server
         // --------------------------------------------------------------------
         public static void SP_trigger_teleport(GEntity ent)
         {
-            ent.Touch = (self, other, trace) =>
+            ent.Touch = (self, other) =>
             {
                 if (other?.Client == null) return;
                 if (!TriggerTeamCheck(self, other)) return;
@@ -584,7 +587,7 @@ namespace ET.Server
             ent.Damage = dmg;
             ent.Angle  = wait;
 
-            ent.Touch = (self, other, trace) =>
+            ent.Touch = (self, other) =>
             {
                 if (other == null || !other.InUse) return;
                 if (Level.Time < self.Timestamp) return;
@@ -626,9 +629,9 @@ namespace ET.Server
             ent.Use = (self, other, activator) =>
             {
                 ServerGameLogic.G_UseTargets(self, activator);
-                GameScript.G_ScriptAction("objective_info", "trigger", activator);
+                GameScript.G_Script_ScriptEvent(self, ScriptEventType.Trigger, "objective_info");
             };
-            ent.Touch = (self, other, trace) =>
+            ent.Touch = (self, other) =>
             {
                 if (other?.Client == null) return;
                 if (!TriggerTeamCheck(self, other)) return;
@@ -641,7 +644,7 @@ namespace ET.Server
         // --------------------------------------------------------------------
         public static void SP_trigger_flagonly(GEntity ent)
         {
-            ent.Touch = (self, other, trace) =>
+            ent.Touch = (self, other) =>
             {
                 if (other?.Client == null) return;
                 var ps = other.Client.PS;
@@ -658,7 +661,7 @@ namespace ET.Server
         // --------------------------------------------------------------------
         public static void SP_trigger_startmatch(GEntity ent)
         {
-            ent.Touch = (self, other, trace) =>
+            ent.Touch = (self, other) =>
             {
                 if (other?.Client == null) return;
 

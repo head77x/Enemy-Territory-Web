@@ -100,7 +100,7 @@ namespace ET.Game
         public string   ScriptPath;
     }
 
-    public static class BgAnimGroup
+    public static partial class BgAnimGroup
     {
         private static readonly List<AnimGroup> _groups = new();
 
@@ -287,37 +287,12 @@ namespace ET.Game
 }
 
 // Expose the tokeniser to BgSoundScript without duplicating it.
+// Both declarations are partial so BG_ParseAnimGroupFile_Tokens can call the private Tokenise.
 namespace ET.Game
 {
     public static partial class BgAnimGroup
     {
-        internal static List<string> BG_ParseAnimGroupFile_Tokens(string text)
-        {
-            // Delegate to the private tokeniser via a thin internal shim.
-            var result = new List<string>();
-            int i = 0;
-            while (i < text.Length)
-            {
-                while (i < text.Length && char.IsWhiteSpace(text[i])) i++;
-                if (i >= text.Length) break;
-                if (text[i] == '/' && i + 1 < text.Length && text[i + 1] == '/')
-                { while (i < text.Length && text[i] != '\n') i++; continue; }
-                if (text[i] == '{' || text[i] == '}') { result.Add(text[i].ToString()); i++; continue; }
-                if (text[i] == '"')
-                {
-                    i++;
-                    int s2 = i;
-                    while (i < text.Length && text[i] != '"') i++;
-                    result.Add(text.Substring(s2, i - s2));
-                    if (i < text.Length) i++;
-                    continue;
-                }
-                int s = i;
-                while (i < text.Length && !char.IsWhiteSpace(text[i]) && text[i] != '{' && text[i] != '}') i++;
-                result.Add(text.Substring(s, i - s));
-            }
-            return result;
-        }
+        internal static List<string> BG_ParseAnimGroupFile_Tokens(string text) => Tokenise(text);
     }
 }
 
@@ -406,7 +381,7 @@ namespace ET.Server
             ent.Count     = 0;
 
             ent.Use = (e, other, activator) => G_Props_Construct(e, activator);
-            ent.Die = (e, inflictor, attacker, damage, mod) => G_Props_Destroy(e, attacker, mod);
+            ent.Die = (e, inflictor, modStr) => G_Props_Destroy(e, inflictor, 0);
         }
 
         public static void SP_func_destructible(GEntity ent)
@@ -425,7 +400,7 @@ namespace ET.Server
             ent.Health    = health;
             ent.ClassName = "func_destructible";
 
-            ent.Die = (e, inflictor, attacker, damage, mod) => G_Props_Destroy(e, attacker, mod);
+            ent.Die = (e, inflictor, modStr) => G_Props_Destroy(e, inflictor, 0);
         }
 
         public static void SP_misc_constructiblemarker(GEntity ent)
@@ -598,16 +573,16 @@ namespace ET.Server
 
         public static void G_RegisterServerCommands()
         {
-            CmdSystem.AddCommand("entitylist",     args => Cmd_EntityList_f(args));
-            CmdSystem.AddCommand("bot",            args => Cmd_Bot_f(args));
-            CmdSystem.AddCommand("forceteam",      args => Cmd_ForceTeam_f(args));
-            CmdSystem.AddCommand("addip",          args => Cmd_AddIP_f(args));
-            CmdSystem.AddCommand("removeip",       args => Cmd_RemoveIP_f(args));
-            CmdSystem.AddCommand("listip",         args => Cmd_ListIP_f(args));
-            CmdSystem.AddCommand("status",         args => Cmd_Status_f(args));
-            CmdSystem.AddCommand("svcommand",      args => Cmd_ServerCommand_f(args));
-            CmdSystem.AddCommand("nextmap",        args => Cmd_NextMap_f(args));
-            CmdSystem.AddCommand("maprestart",     args => Cmd_MapRestart_f(args));
+            CmdSystem.Cmd_AddCommand("entitylist",  Cmd_EntityList_f);
+            CmdSystem.Cmd_AddCommand("bot",         Cmd_Bot_f);
+            CmdSystem.Cmd_AddCommand("forceteam",   Cmd_ForceTeam_f);
+            CmdSystem.Cmd_AddCommand("addip",       Cmd_AddIP_f);
+            CmdSystem.Cmd_AddCommand("removeip",    Cmd_RemoveIP_f);
+            CmdSystem.Cmd_AddCommand("listip",      Cmd_ListIP_f);
+            CmdSystem.Cmd_AddCommand("status",      Cmd_Status_f);
+            CmdSystem.Cmd_AddCommand("svcommand",   Cmd_ServerCommand_f);
+            CmdSystem.Cmd_AddCommand("nextmap",     Cmd_NextMap_f);
+            CmdSystem.Cmd_AddCommand("maprestart",  Cmd_MapRestart_f);
         }
 
         // ------------------------------------------------------------------
@@ -635,9 +610,9 @@ namespace ET.Server
             string name = args.Length >= 3 ? args[2] : "ET_Bot";
             // Forward to the server as a console command — ET does the same via trap_SendConsoleCommand.
             if (sub == "add")
-                CmdSystem.ExecuteText(CmdExecType.Now, $"addbot {name}");
+                CmdSystem.Cmd_ExecuteString($"addbot {name}");
             else if (sub == "remove")
-                CmdSystem.ExecuteText(CmdExecType.Now, $"kick {name}");
+                CmdSystem.Cmd_ExecuteString($"kick {name}");
             else
                 Debug.Log("bot: unknown sub-command. Use 'add' or 'remove'.");
         }

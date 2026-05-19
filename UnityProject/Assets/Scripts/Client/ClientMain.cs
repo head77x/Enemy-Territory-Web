@@ -64,7 +64,7 @@ namespace ET.Client
             _lastResendTime = -99999;
 
             // Send initial challenge request immediately
-            NetChannel.SendOOBPrint(Clc.ServerAddress, NetSrc.Client, "getchallenge");
+            NetChannel.SendOOBPrint(NetSrc.Client, Clc.ServerAddress, "getchallenge");
             _lastResendTime = _realtime;
 
             Debug.Log("CL_Connect: challenging " + serverAddress);
@@ -76,7 +76,7 @@ namespace ET.Client
             {
                 if (_realtime - _lastResendTime > 3000)
                 {
-                    NetChannel.SendOOBPrint(Clc.ServerAddress, NetSrc.Client, "getchallenge");
+                    NetChannel.SendOOBPrint(NetSrc.Client, Clc.ServerAddress, "getchallenge");
                     _lastResendTime = _realtime;
                     Debug.Log("CL_CheckForResend: resending getchallenge");
                 }
@@ -90,7 +90,7 @@ namespace ET.Client
                         Clc.Challenge,
                         Clc.Netchan.QPort,
                         Clc.ClientNum);
-                    NetChannel.SendOOBPrint(Clc.ServerAddress, NetSrc.Client, connectString);
+                    NetChannel.SendOOBPrint(NetSrc.Client, Clc.ServerAddress, connectString);
                     _lastResendTime = _realtime;
                     Debug.Log("CL_CheckForResend: resending connect");
                 }
@@ -142,7 +142,7 @@ namespace ET.Client
             {
                 int idx = (startCmd + i + 1) & ClientConst.CMD_MASK;
                 UserCmd cmd = Cl.Cmds[idx];
-                msg.WriteDeltaUsercmd(oldCmd, cmd);
+                msg.WriteDeltaUserCmd(oldCmd, cmd);
                 oldCmd = cmd;
             }
 

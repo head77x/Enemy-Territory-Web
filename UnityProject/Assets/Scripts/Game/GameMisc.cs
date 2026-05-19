@@ -482,9 +482,9 @@ namespace ET.Game
         public static bool IsAkimboWeapon(int weaponNum)
         {
             return weaponNum == GameConst.WP_AKIMBO_COLT
-                || weaponNum == WP_AKIMBO_SILENCEDCOLT
+                || weaponNum == GameConst.WP_AKIMBO_SILENCEDCOLT
                 || weaponNum == GameConst.WP_AKIMBO_LUGER
-                || weaponNum == WP_AKIMBO_SILENCEDLUGER;
+                || weaponNum == GameConst.WP_AKIMBO_SILENCEDLUGER;
         }
 
         // -------------------------------------------------------
@@ -526,10 +526,10 @@ namespace ET.Game
         /// </summary>
         public static int AkimboSidearm(int weaponNum)
         {
-            if (weaponNum == GameConst.WP_AKIMBO_COLT || weaponNum == WP_AKIMBO_SILENCEDCOLT)
+            if (weaponNum == GameConst.WP_AKIMBO_COLT || weaponNum == GameConst.WP_AKIMBO_SILENCEDCOLT)
                 return GameConst.WP_COLT;
 
-            if (weaponNum == GameConst.WP_AKIMBO_LUGER || weaponNum == WP_AKIMBO_SILENCEDLUGER)
+            if (weaponNum == GameConst.WP_AKIMBO_LUGER || weaponNum == GameConst.WP_AKIMBO_SILENCEDLUGER)
                 return GameConst.WP_LUGER;
 
             return GameConst.WP_NONE;

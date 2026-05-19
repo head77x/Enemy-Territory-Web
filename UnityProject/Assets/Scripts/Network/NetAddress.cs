@@ -42,6 +42,24 @@ namespace ET.Network
 
         public static NetAddress Loopback() => new NetAddress { Type = NetAddressType.Loopback };
 
+        // Parse — parses "ip:port" or "ip" strings into a NetAddress
+        public static NetAddress Parse(string address)
+        {
+            if (string.IsNullOrEmpty(address)) return null;
+            if (address == "localhost" || address == "loopback")
+                return Loopback();
+            try
+            {
+                int colonIdx = address.LastIndexOf(':');
+                string host = colonIdx >= 0 ? address.Substring(0, colonIdx) : address;
+                ushort port = colonIdx >= 0 && ushort.TryParse(address.Substring(colonIdx + 1), out var p)
+                    ? p : (ushort)27960;
+                var ep = new System.Net.IPEndPoint(System.Net.IPAddress.Parse(host), port);
+                return FromEndPoint(ep);
+            }
+            catch { return null; }
+        }
+
         public static NetAddress FromEndPoint(IPEndPoint ep)
         {
             var a = new NetAddress { Type = NetAddressType.IP, Port = (ushort)ep.Port };

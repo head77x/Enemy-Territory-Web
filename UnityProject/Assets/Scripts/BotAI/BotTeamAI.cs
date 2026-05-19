@@ -59,10 +59,10 @@ namespace ET.BotAI
         // Bot_LoadScripts — loads all .script files from scripts/bots/
         public static void LoadScripts()
         {
-            string[] files = FileSystem.Instance.GetFileList("scripts/bots", ".script");
+            string[] files = FileSystem.FS_GetFileList("scripts/bots", ".script");
             foreach (string f in files)
             {
-                string text = FileSystem.Instance.ReadAllText($"scripts/bots/{f}");
+                string text = FileSystem.ReadAllText($"scripts/bots/{f}");
                 if (!string.IsNullOrEmpty(text))
                     ParseScript(f.Replace(".script", ""), text);
             }

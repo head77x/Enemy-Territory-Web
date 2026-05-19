@@ -93,14 +93,14 @@ namespace ET.Server
         public static void Apply(ServerConfigMode mode)
         {
             var table = mode == ServerConfigMode.Competition ? _compSettings : _pubSettings;
-            var cvars = CvarSystem.Instance;
+            
             foreach (var mc in table)
             {
-                cvars.Set(mc.Name, mc.Value);
+                CvarSystem.Set(mc.Name, mc.Value);
                 Debug.Log($"config: set {mc.Name} {mc.Value}");
             }
             Debug.Log($">> {mode} settings loaded!");
-            CmdSystem.Instance.ExecuteText($"map_restart 0 {GameConstants.GS_WARMUP}");
+            CmdSystem.Cmd_ExecuteString($"map_restart 0 {GameConstants.GS_WARMUP}");
         }
     }
 
@@ -167,7 +167,7 @@ namespace ET.Server
                 return false;
 
             // Load and parse the animation script
-            string text = ET.Game.FileSystem.Instance.ReadAllText(animScript);
+            string text = ET.Game.FileSystem.ReadAllText(animScript);
             if (string.IsNullOrEmpty(text))
             {
                 Debug.LogWarning($"G_ParseAnimationFiles: cannot read {animScript}");

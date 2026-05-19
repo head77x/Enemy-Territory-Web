@@ -669,15 +669,15 @@ namespace ET.Server
             var client = Clients[clientNum];
             if (client == null) return;
 
-            string name = ETShared.InfoValueForKey(userinfo, "name");
+            string name = ETShared.Info_ValueForKey(userinfo, "name");
             if (string.IsNullOrEmpty(name)) name = $"Player{clientNum}";
             client.Pers.Name = name;
 
-            int team = ETShared.InfoValueForKeyInt(userinfo, "team");
+            int.TryParse(ETShared.Info_ValueForKey(userinfo, "team"), out int team);
             if (team >= 0 && team <= (int)ClientSessionTeam.Spectator)
                 client.Sess.SessionTeam = team;
 
-            int cls = ETShared.InfoValueForKeyInt(userinfo, "playerclass");
+            int.TryParse(ETShared.Info_ValueForKey(userinfo, "playerclass"), out int cls);
             if (cls >= GameConst.PC_SOLDIER && cls <= GameConst.PC_COVERTOPS)
                 client.Pers.ClassType = cls;
 
@@ -1135,6 +1135,13 @@ namespace ET.Server
                     pos++;
                 return s.Substring(start, pos - start);
             }
+        }
+
+        // GetClientUserinfo — returns the userinfo string for a client slot
+        public static string GetClientUserinfo(int clientNum)
+        {
+            if (clientNum < 0 || clientNum >= MAX_CLIENTS) return "";
+            return ServerMain.Svs.Clients[clientNum]?.UserInfo ?? "";
         }
     }
 }

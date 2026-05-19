@@ -2,8 +2,8 @@
     "name": "ET.Game",
     "rootNamespace": "ET.Game",
     "references": [
-        "GUID:ET.Core",
-        "GUID:ET.Network"
+        "ET.Core",
+        "ET.Network"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

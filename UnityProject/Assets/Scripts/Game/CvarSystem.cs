@@ -131,8 +131,41 @@ namespace ET.Game
         public static void SetValue(string name, float value) =>
             Set(name, value.ToString("G", System.Globalization.CultureInfo.InvariantCulture));
 
+        // Convenience aliases used by UI/script code
+        public static void SetFloat(string name, float value)  => SetValue(name, value);
+        public static void SetString(string name, string value) => Set(name, value);
+
         public static void SetInt(string name, int value) =>
             Set(name, value.ToString());
+
+        // WriteToString — serialise all archive cvars as "set key value\n" lines
+        public static string WriteToString()
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var kv in _vars)
+            {
+                if ((kv.Value.Flags & CvarFlags.Archive) != 0)
+                    sb.AppendLine($"set {kv.Key} \"{kv.Value.StringValue}\"");
+            }
+            return sb.ToString();
+        }
+
+        // GetInfoString — build an infostring from cvars matching the given flags
+        public static string GetInfoString(CvarFlags flags)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var kv in _vars)
+            {
+                if ((kv.Value.Flags & flags) != 0)
+                {
+                    sb.Append('\\');
+                    sb.Append(kv.Key);
+                    sb.Append('\\');
+                    sb.Append(kv.Value.StringValue);
+                }
+            }
+            return sb.ToString();
+        }
 
         public static void Reset(string name)
         {

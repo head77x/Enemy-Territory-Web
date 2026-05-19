@@ -196,6 +196,12 @@ namespace ET.Server
 
         public int DownloadNotify;
 
+        // Convenience properties
+        public bool   IsBot    { get; set; }
+        public bool   Active   => State == ClientState.Active;
+        public bool   Connected => State >= ClientState.Connected;
+        public string Address  => Netchan?.RemoteAddress?.ToString() ?? "loopback";
+
         public ServerClient()
         {
             for (int i = 0; i < ServerConst.PACKET_BACKUP; i++)

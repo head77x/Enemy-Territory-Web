@@ -134,7 +134,7 @@ namespace ET.Server
             }
 
             // end-of-entities sentinel
-            msg.WriteBits(GameConst.MAX_GENTITIES - 1, NetMessage.GENTITYNUM_BITS);
+            msg.WriteBits(GameConst.MAX_GENTITIES - 1, NetConst.GENTITYNUM_BITS);
         }
 
         // -----------------------------------------------------------------------
@@ -185,7 +185,7 @@ namespace ET.Server
             msg.WriteData(frame.AreaBits, frame.AreaBytes);
 
             // playerstate delta
-            msg.WriteDeltaPlayerstate(
+            msg.WriteDeltaPlayerState(
                 oldframe?.Ps,
                 frame.Ps);
 
@@ -216,7 +216,7 @@ namespace ET.Server
                 return;
 
             var sv  = ServerMain.Sv;
-            var buf = new byte[NetMessage.MAX_MSGLEN];
+            var buf = new byte[NetConst.MAX_MSGLEN];
             var msg = new NetMessage(buf, buf.Length);
 
             SV_UpdateServerCommandsToClient(cl, msg);

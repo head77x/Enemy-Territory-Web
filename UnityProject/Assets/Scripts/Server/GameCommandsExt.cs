@@ -142,7 +142,7 @@ namespace ET.Server
 
         private static bool ShowHelp(GEntity ent, string cmdName, int idx)
         {
-            string arg = CmdSystem.Instance.Argv(1);
+            string arg = CmdSystem.Cmd_Argv(1);
             if (arg == "?")
             {
                 CP(ent, $"\n^3{cmdName}{_commands[idx].HelpText}\n\n");
@@ -193,7 +193,7 @@ namespace ET.Server
         // follow
         private static void Cmd_Follow(GEntity ent, int idx, bool val)
         {
-            string arg = CmdSystem.Instance.Argv(1);
+            string arg = CmdSystem.Cmd_Argv(1);
             if (string.IsNullOrEmpty(arg)) { CP(ent, "print \"Usage: follow <player_ID|allies|axis>\n\""); return; }
 
             int team = -1;
@@ -215,7 +215,7 @@ namespace ET.Server
         // lock / unlock
         private static void Cmd_Lock(GEntity ent, int idx, bool fLock)
         {
-            if (CvarSystem.Instance.GetInt("team_nocontrols") != 0) { NoTeamControls(ent); return; }
+            if (CvarSystem.GetInt("team_nocontrols") != 0) { NoTeamControls(ent); return; }
             if (!Debounce(ent, idx)) return;
 
             int tteam = ent.Client.Sess.SessionTeam;
@@ -238,7 +238,7 @@ namespace ET.Server
         // pause / timein / timeout / unpause
         private static void Cmd_Pause(GEntity ent, int idx, bool fPause)
         {
-            if (CvarSystem.Instance.GetInt("team_nocontrols") != 0) { NoTeamControls(ent); return; }
+            if (CvarSystem.GetInt("team_nocontrols") != 0) { NoTeamControls(ent); return; }
 
             var level = ServerGameLogic.Level;
             int pause = level.MatchPause;
@@ -265,7 +265,7 @@ namespace ET.Server
                 if (ti.Timeouts <= 0) { CP(ent, "cpm \"^3Your team has no more timeouts remaining!\n\""); return; }
                 ti.Timeouts--;
                 level.MatchPause = tteam + 128;
-                AudioSystem.Instance.PlayGlobalSound("sound/misc/referee.wav");
+                AudioSystem.PlayGlobalSound("sound/misc/referee.wav");
                 AP($"print \"^3Match is ^1PAUSED^3!\n^7[{GameTeam.TeamName(tteam)}^7: - {ti.Timeouts} Timeouts Remaining]\n\"");
                 CP(ent, $"cp \"^3Match is ^1PAUSED^3! ({GameTeam.TeamName(tteam)}^3)\n\"");
             }
@@ -275,7 +275,7 @@ namespace ET.Server
             {
                 AP("print \"\n^3Match is ^5UNPAUSED^3 ... resuming in 10 seconds!\n\n\"");
                 level.MatchPause = PAUSE_UNPAUSING;
-                AudioSystem.Instance.PlayGlobalSound("sound/osp/prepare.wav");
+                AudioSystem.PlayGlobalSound("sound/osp/prepare.wav");
             }
         }
 
@@ -323,8 +323,8 @@ namespace ET.Server
         // ref
         private static void Cmd_Ref(GEntity ent, int idx, bool val)
         {
-            string pw = CmdSystem.Instance.Argv(1);
-            string refpw = CvarSystem.Instance.GetString("refereePassword");
+            string pw = CmdSystem.Cmd_Argv(1);
+            string refpw = CvarSystem.GetString("refereePassword");
             if (!string.IsNullOrEmpty(refpw) && pw == refpw)
             {
                 RefereeSystem.MakeReferee(ent);
@@ -349,7 +349,7 @@ namespace ET.Server
         // specinvite
         private static void Cmd_SpecInvite(GEntity ent, int idx, bool val)
         {
-            if (CvarSystem.Instance.GetInt("team_nocontrols") != 0) { NoTeamControls(ent); return; }
+            if (CvarSystem.GetInt("team_nocontrols") != 0) { NoTeamControls(ent); return; }
             if (!Debounce(ent, idx)) return;
 
             int tteam = ent.Client.Sess.SessionTeam;
@@ -359,7 +359,7 @@ namespace ET.Server
             if (!GameTeam.TeamInfo[tteam].SpecLock)
             { CP(ent, "cpm \"Your team isn't locked from spectators!\n\""); return; }
 
-            string arg = CmdSystem.Instance.Argv(1);
+            string arg = CmdSystem.Cmd_Argv(1);
             if (!int.TryParse(arg, out int pid) || pid < 0 || pid >= GameConstants.MAX_CLIENTS)
             { CP(ent, "print \"Invalid player ID.\n\""); return; }
 
@@ -377,7 +377,7 @@ namespace ET.Server
         // speclock / specunlock
         private static void Cmd_SpecLock(GEntity ent, int idx, bool fLock)
         {
-            if (CvarSystem.Instance.GetInt("team_nocontrols") != 0) { NoTeamControls(ent); return; }
+            if (CvarSystem.GetInt("team_nocontrols") != 0) { NoTeamControls(ent); return; }
             if (!Debounce(ent, idx)) return;
 
             int tteam = ent.Client.Sess.SessionTeam;
@@ -409,7 +409,7 @@ namespace ET.Server
             if (ent.Client.Sess.SessionTeam == GameConstants.TEAM_SPECTATOR)
             { CP(ent, "cpm \"You must be in the game to be ^3ready^7!\n\""); return; }
 
-            int minPlayers = CvarSystem.Instance.GetInt("match_minplayers");
+            int minPlayers = CvarSystem.GetInt("match_minplayers");
             if (level.NumPlayingClients < minPlayers)
             { CP(ent, "cpm \"Not enough players to start match!\n\""); return; }
 
@@ -439,7 +439,7 @@ namespace ET.Server
             if (ent.Client.Sess.SessionTeam == GameConstants.TEAM_SPECTATOR)
             { CP(ent, "cpm \"Spectators can't ready a team!\n\""); return; }
 
-            int minPlayers = CvarSystem.Instance.GetInt("match_minplayers");
+            int minPlayers = CvarSystem.GetInt("match_minplayers");
             if (level.NumPlayingClients < minPlayers)
             { CP(ent, "cpm \"Not enough players to start match!\n\""); return; }
 
@@ -481,7 +481,7 @@ namespace ET.Server
         // topshots / bottomshots
         private static void Cmd_WeaponRankings(GEntity ent, int idx, bool doTop)
         {
-            string arg = CmdSystem.Instance.Argv(1);
+            string arg = CmdSystem.Cmd_Argv(1);
             if (string.IsNullOrEmpty(arg))
             {
                 SendWeaponLeaders(ent, doTop);

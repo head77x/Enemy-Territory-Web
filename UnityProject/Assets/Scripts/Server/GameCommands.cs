@@ -71,7 +71,7 @@ namespace ET.Server
         {
             if (ent?.Client == null) return;
 
-            string arg = CmdSystem.Argv(1).ToLowerInvariant();
+            string arg = CmdSystem.Cmd_Argv(1).ToLowerInvariant();
             int newTeam;
             switch (arg)
             {
@@ -103,7 +103,7 @@ namespace ET.Server
         {
             if (ent?.Client == null) return;
 
-            string arg = CmdSystem.Argv(1).ToLowerInvariant();
+            string arg = CmdSystem.Cmd_Argv(1).ToLowerInvariant();
             int newClass;
             switch (arg)
             {
@@ -132,7 +132,7 @@ namespace ET.Server
         {
             if (ent?.Client == null) return;
 
-            string arg = CmdSystem.Argv(1);
+            string arg = CmdSystem.Cmd_Argv(1);
             if (!int.TryParse(arg, out int weapon)) return;
             if (weapon < 0 || weapon >= GameConst.WP_NUM_WEAPONS) return;
 
@@ -149,7 +149,7 @@ namespace ET.Server
                 (ent.Client.PS.EFlags & GameConst.EF_VOTED) != 0)
                 return;
 
-            string arg = CmdSystem.Argv(1).ToLowerInvariant();
+            string arg = CmdSystem.Cmd_Argv(1).ToLowerInvariant();
             if (arg == "yes" || arg == "1")
                 ServerGameLogic.Level.VoteYes++;
             else if (arg == "no" || arg == "0")
@@ -166,8 +166,8 @@ namespace ET.Server
             if (ServerGameLogic.Level.VoteInProgress) return;
             if (CvarSystem.GetInt("g_allowVote") == 0) return;
 
-            string voteCmd  = CmdSystem.Argv(1);
-            string voteArg  = CmdSystem.Argv(2);
+            string voteCmd  = CmdSystem.Cmd_Argv(1);
+            string voteArg  = CmdSystem.Cmd_Argv(2);
             if (string.IsNullOrEmpty(voteCmd)) return;
 
             // Only a small whitelist of callvote commands is permitted
@@ -207,7 +207,7 @@ namespace ET.Server
         {
             if (ent?.Client == null) return;
 
-            string item = CmdSystem.Argv(1).ToLowerInvariant();
+            string item = CmdSystem.Cmd_Argv(1).ToLowerInvariant();
             switch (item)
             {
                 case "health":
@@ -265,7 +265,7 @@ namespace ET.Server
         {
             if (ent?.Client == null) return;
 
-            string text = CmdSystem.Args(1);
+            string text = CmdSystem.Cmd_Args();
             if (string.IsNullOrEmpty(text)) return;
 
             G_Say(ent, null, chatType, text);
@@ -314,7 +314,7 @@ namespace ET.Server
             if (ent?.Client == null) return;
             if (ent.Client.Pers.ClassType != GameConst.PC_MEDIC) return;
 
-            string arg = CmdSystem.Argv(1);
+            string arg = CmdSystem.Cmd_Argv(1);
             if (!int.TryParse(arg, out int targetNum)) return;
             if (targetNum < 0 || targetNum >= ServerGameLogic.Level.MaxClients) return;
 
@@ -376,7 +376,7 @@ namespace ET.Server
             {
                 case "map":
                     if (!string.IsNullOrEmpty(arg))
-                        CmdSystem.ExecuteText($"map {arg}");
+                        CmdSystem.Cmd_ExecuteString($"map {arg}");
                     break;
                 case "kick":
                     if (int.TryParse(arg, out int kickNum))
@@ -387,10 +387,10 @@ namespace ET.Server
                         CvarSystem.Set("g_timelimit", tl.ToString());
                     break;
                 case "nextmap":
-                    CmdSystem.ExecuteText("vstr nextmap");
+                    CmdSystem.Cmd_ExecuteString("vstr nextmap");
                     break;
                 case "restart":
-                    CmdSystem.ExecuteText("map_restart");
+                    CmdSystem.Cmd_ExecuteString("map_restart");
                     break;
             }
         }

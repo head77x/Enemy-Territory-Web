@@ -25,21 +25,21 @@ namespace ET.Server
             if (_initialized) return;
             _initialized = true;
 
-            var cmd = CmdSystem.Instance;
-            cmd.AddCommand("heartbeat",         Cmd_Heartbeat);
-            cmd.AddCommand("status",             Cmd_Status);
-            cmd.AddCommand("serverinfo",         Cmd_Serverinfo);
-            cmd.AddCommand("systeminfo",         Cmd_Systeminfo);
-            cmd.AddCommand("dumpuser",           Cmd_DumpUser);
-            cmd.AddCommand("map",                Cmd_Map);
-            cmd.AddCommand("devmap",             Cmd_Map);
-            cmd.AddCommand("map_restart",        Cmd_MapRestart);
-            cmd.AddCommand("killserver",         Cmd_KillServer);
-            cmd.AddCommand("say",                Cmd_ConSay);
-            cmd.AddCommand("gameCompleteStatus", Cmd_GameCompleteStatus);
-            cmd.AddCommand("kick",               Cmd_Kick);
-            cmd.AddCommand("clientkick",         Cmd_KickNum);
-            cmd.AddCommand("ban",                Cmd_Ban);
+            
+            CmdSystem.Cmd_AddCommand("heartbeat",         Cmd_Heartbeat);
+            CmdSystem.Cmd_AddCommand("status",             Cmd_Status);
+            CmdSystem.Cmd_AddCommand("serverinfo",         Cmd_Serverinfo);
+            CmdSystem.Cmd_AddCommand("systeminfo",         Cmd_Systeminfo);
+            CmdSystem.Cmd_AddCommand("dumpuser",           Cmd_DumpUser);
+            CmdSystem.Cmd_AddCommand("map",                Cmd_Map);
+            CmdSystem.Cmd_AddCommand("devmap",             Cmd_Map);
+            CmdSystem.Cmd_AddCommand("map_restart",        Cmd_MapRestart);
+            CmdSystem.Cmd_AddCommand("killserver",         Cmd_KillServer);
+            CmdSystem.Cmd_AddCommand("say",                Cmd_ConSay);
+            CmdSystem.Cmd_AddCommand("gameCompleteStatus", Cmd_GameCompleteStatus);
+            CmdSystem.Cmd_AddCommand("kick",               Cmd_Kick);
+            CmdSystem.Cmd_AddCommand("clientkick",         Cmd_KickNum);
+            CmdSystem.Cmd_AddCommand("ban",                Cmd_Ban);
         }
 
         // SV_RemoveOperatorCommands — in ET these are intentionally not removed
@@ -61,7 +61,7 @@ namespace ET.Server
 
             for (int i = 0; i < GameConstants.MAX_CLIENTS; i++)
             {
-                var cl = ServerMain.GetClientState(i);
+                var cl = ServerMain.Svs.Clients[i];
                 if (cl == null || !cl.Active) continue;
 
                 var ps   = ServerGameLogic.Entities[i]?.Client?.PS;
@@ -74,17 +74,17 @@ namespace ET.Server
         // SV_Serverinfo_f
         private static void Cmd_Serverinfo(string[] args)
         {
-            var cvars = CvarSystem.Instance;
+            
             Debug.Log("Server info settings:");
-            Debug.Log(cvars.GetInfoString(CvarFlags.ServerInfo));
+            Debug.Log(CvarSystem.GetInfoString(CvarFlags.ServerInfo));
         }
 
         // SV_Systeminfo_f
         private static void Cmd_Systeminfo(string[] args)
         {
-            var cvars = CvarSystem.Instance;
+            
             Debug.Log("System info settings:");
-            Debug.Log(cvars.GetInfoString(CvarFlags.SystemInfo));
+            Debug.Log(CvarSystem.GetInfoString(CvarFlags.SystemInfo));
         }
 
         // SV_DumpUser_f
@@ -105,16 +105,16 @@ namespace ET.Server
             bool cheat = args[0].StartsWith("dev", StringComparison.OrdinalIgnoreCase);
 
             // Verify BSP exists via FileSystem
-            if (!FileSystem.Instance.FileExists($"maps/{mapName}.bsp"))
+            if (!FileSystem.FS_FileExists($"maps/{mapName}.bsp"))
             { Debug.LogError($"Can't find map {mapName}"); return; }
 
-            var cvars = CvarSystem.Instance;
-            cvars.Set("gamestate",       GameConstants.GS_INITIALIZE.ToString());
-            cvars.Set("g_currentRound",  "0");
-            cvars.Set("g_nextTimeLimit", "0");
-            cvars.Set("sv_cheats",       cheat ? "1" : "0");
+            
+            CvarSystem.Set("gamestate",       GameConstants.GS_INITIALIZE.ToString());
+            CvarSystem.Set("g_currentRound",  "0");
+            CvarSystem.Set("g_nextTimeLimit", "0");
+            CvarSystem.Set("sv_cheats",       cheat ? "1" : "0");
 
-            ServerInit.SpawnServer(mapName);
+            ServerInit.SV_SpawnServer(mapName);
         }
 
         // SV_MapRestart_f
@@ -125,9 +125,9 @@ namespace ET.Server
             int newGs = GameConstants.GS_WARMUP;
             if (args.Length > 2) int.TryParse(args[2], out newGs);
 
-            var cvars = CvarSystem.Instance;
-            cvars.Set("gamestate", newGs.ToString());
-            ServerInit.SpawnServer(ServerGameLogic.Level.MapName, restart: true);
+            
+            CvarSystem.Set("gamestate", newGs.ToString());
+            ServerInit.SV_SpawnServer(ServerGameLogic.Level.MapName);
         }
 
         // SV_ConSay_f — broadcasts a console chat message
@@ -149,11 +149,11 @@ namespace ET.Server
             string name = args[1];
             for (int i = 0; i < GameConstants.MAX_CLIENTS; i++)
             {
-                var cl = ServerMain.GetClientState(i);
+                var cl = ServerMain.Svs.Clients[i];
                 if (cl != null && cl.Active &&
                     string.Equals(cl.Name, name, StringComparison.OrdinalIgnoreCase))
                 {
-                    ServerClient.DropClient(i, "kicked");
+                    SV_Client.DropClient(i, "kicked");
                     return;
                 }
             }
@@ -165,7 +165,7 @@ namespace ET.Server
         {
             if (args.Length < 2 || !int.TryParse(args[1], out int num))
             { Debug.Log("Usage: clientkick <num>"); return; }
-            ServerClient.DropClient(num, "kicked");
+            SV_Client.DropClient(num, "kicked");
         }
 
         // SV_Ban_f — IP ban (stored in cvar list, cleared on restart)
@@ -193,7 +193,7 @@ namespace ET.Server
             if (!CheckTransitionGameState(newGs, oldGs)) return false;
 
             if (newGs == GameConstants.GS_RESET) newGs = GameConstants.GS_WARMUP;
-            CvarSystem.Instance.Set("gamestate", newGs.ToString());
+            CvarSystem.Set("gamestate", newGs.ToString());
             return true;
         }
     }
@@ -206,7 +206,7 @@ namespace ET.Server
     // -------------------------------------------------------------------------
     public static class ServerBotIntegration
     {
-        public static bool BotEnabled => CvarSystem.Instance.GetInt("bot_enable") != 0;
+        public static bool BotEnabled => CvarSystem.GetInt("bot_enable") != 0;
 
         private static readonly HashSet<int> _botClients = new HashSet<int>();
 
@@ -220,10 +220,10 @@ namespace ET.Server
                 int end   = pass == 0 ? preferredNum + 1 : GameConstants.MAX_CLIENTS;
                 for (int i = start; i < end; i++)
                 {
-                    var cl = ServerMain.GetClientState(i);
+                    var cl = ServerMain.Svs.Clients[i];
                     if (cl == null || !cl.Active)
                     {
-                        ServerClient.ConnectBot(i);
+                        SV_Client.ConnectBot(i);
                         _botClients.Add(i);
                         return i;
                     }
@@ -235,7 +235,7 @@ namespace ET.Server
         // SV_BotFreeClient
         public static void FreeClient(int clientNum)
         {
-            ServerClient.DropClient(clientNum, "bot freed");
+            SV_Client.DropClient(clientNum, "bot freed");
             _botClients.Remove(clientNum);
         }
 
@@ -243,11 +243,11 @@ namespace ET.Server
         public static TraceResult Trace(
             Vector3 start, Vector3 mins, Vector3 maxs, Vector3 end,
             int passEntityNum, int contentMask)
-            => CollisionSystem.Instance.BoxTrace(start, end, mins, maxs, passEntityNum, contentMask);
+            => CollisionSystem.CM_BoxTrace(start, end, mins, maxs, passEntityNum, contentMask);
 
         // BotImport_PointContents
         public static int PointContents(Vector3 point)
-            => CollisionSystem.Instance.PointContents(point, -1);
+            => CollisionSystem.CM_PointContents(point, -1);
 
         // BotImport_inPVS — Unity has no BSP PVS; use distance check instead
         public static bool InPVS(Vector3 p1, Vector3 p2)

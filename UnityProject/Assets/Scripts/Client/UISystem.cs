@@ -259,7 +259,7 @@ namespace ET.Client
 
             // Try to load the matching script from the VFS.
             string scriptPath = $"ui/{type.ToString().ToLower()}.menu";
-            string text = FileSystem.FS_ReadFile(scriptPath);
+            string text = FileSystem.FS_ReadFileText(scriptPath);
             if (!string.IsNullOrEmpty(text))
                 UIShared.UI_ParseMenuScript(text, type, menu);
 
@@ -448,11 +448,11 @@ namespace ET.Client
 
             if (action.StartsWith("exec ", StringComparison.OrdinalIgnoreCase))
             {
-                CmdSystem.ExecuteText(action.Substring(5).Trim());
+                CmdSystem.Cmd_ExecuteString(action.Substring(5).Trim());
                 return;
             }
 
-            CmdSystem.ExecuteText(action);
+            CmdSystem.Cmd_ExecuteString(action);
         }
 
         public static float UI_CvarFloatItem(MenuItem item)
@@ -466,7 +466,7 @@ namespace ET.Client
         {
             if (string.IsNullOrEmpty(item.CvarName))
                 return;
-            CvarSystem.SetFloat(item.CvarName, value);
+            CvarSystem.SetValue(item.CvarName, value);
             item.CvarValue = value.ToString("G");
         }
 
@@ -481,7 +481,7 @@ namespace ET.Client
         {
             if (string.IsNullOrEmpty(item.CvarName))
                 return;
-            CvarSystem.SetString(item.CvarName, value);
+            CvarSystem.Set(item.CvarName, value);
             item.CvarValue = value;
         }
 
@@ -654,7 +654,7 @@ namespace ET.Client
         {
             _arenas.Clear();
 
-            string text = FileSystem.FS_ReadFile("scripts/arenas.txt");
+            string text = FileSystem.FS_ReadFileText("scripts/arenas.txt");
             if (string.IsNullOrEmpty(text))
                 return;
 

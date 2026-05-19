@@ -12,7 +12,7 @@ using ET.Server;
 using ET.Client;
 using ET.BotAI;
 
-namespace ET.Game
+namespace ET.App
 {
     /// <summary>
     /// Top-level integration MonoBehaviour for the ET→Unity port.
@@ -52,6 +52,14 @@ namespace ET.Game
         /// </summary>
         private void Awake()
         {
+            // ---- Wire CommonSystem delegates (avoids circular assembly deps) ----
+            CommonSystem.CvarSetDelegate     = CvarSystem.Set;
+            CommonSystem.CvarGetIntDelegate  = (k) => CvarSystem.GetInt(k);
+            CommonSystem.CvarWriteDelegate   = CvarSystem.WriteToString;
+            CommonSystem.ConsolePrintDelegate= ClientConsole.Print;
+            CommonSystem.KeyEventDelegate    = KeySystem.OnKeyEvent;
+            CommonSystem.WriteBindingsDelegate = KeySystem.WriteBindings;
+
             // ---- File system ----
             string etBase = Path.Combine(Application.streamingAssetsPath, "etmain");
             FileSystem.FS_AddGameDirectory(etBase);
@@ -87,8 +95,8 @@ namespace ET.Game
 
                 // Subscribe server events
                 ServerMain.OnGameRunFrame        += OnGameRunFrame;
-                ServerClient.OnClientEnterWorld  += OnClientEnterWorld;
-                ServerClient.OnClientThink       += OnClientThink;
+                SV_Client.OnClientEnterWorld     += OnClientEnterWorld;
+                SV_Client.OnClientThink          += OnClientThink;
             }
 
             if (StartClient)
@@ -159,8 +167,8 @@ namespace ET.Game
         {
             // Unsubscribe — guards against null-ref if subsystems were never started
             ServerMain.OnGameRunFrame       -= OnGameRunFrame;
-            ServerClient.OnClientEnterWorld -= OnClientEnterWorld;
-            ServerClient.OnClientThink      -= OnClientThink;
+            SV_Client.OnClientEnterWorld    -= OnClientEnterWorld;
+            SV_Client.OnClientThink         -= OnClientThink;
 
             ClientParse.OnSnapshotParsed -= OnSnapshotParsed;
             ClientParse.OnServerCommand  -= OnServerCommand;
@@ -216,7 +224,7 @@ namespace ET.Game
         /// decoded; use this to drive local prediction reconciliation and
         /// entity interpolation.
         /// </summary>
-        private void OnSnapshotParsed(ClientSnapshot snap)
+        private void OnSnapshotParsed(ET.Client.ClientSnapshot snap)
         {
             // update local game state
         }

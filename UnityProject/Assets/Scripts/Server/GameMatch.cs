@@ -636,7 +636,7 @@ namespace ET.Server
                 return;
             }
 
-            string teamNumStr = CmdSystem.Argv(1);
+            string teamNumStr = CmdSystem.Cmd_Argv(1);
             if (!int.TryParse(teamNumStr, out int num) || num < 0 || num >= FireTeam.MAX_FIRETEAMS)
             {
                 GameMatch.G_PrintMessage(clientNum, "Usage: fireteam join <0-7>\n");
@@ -681,7 +681,7 @@ namespace ET.Server
                 return;
             }
 
-            string targetStr = CmdSystem.Argv(1);
+            string targetStr = CmdSystem.Cmd_Argv(1);
             if (!int.TryParse(targetStr, out int targetNum) ||
                 targetNum < 0 || targetNum >= GameConst.MAX_CLIENTS)
             {

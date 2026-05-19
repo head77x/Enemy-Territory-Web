@@ -99,6 +99,28 @@ namespace ET.Core
             File.WriteAllBytes(fullPath, data);
         }
 
+        // WriteAllText — text convenience wrapper
+        public static void WriteAllText(string path, string text) =>
+            FS_WriteFile(path, System.Text.Encoding.UTF8.GetBytes(text));
+
+        // ReadAllText — alias for FS_ReadFileText
+        public static string ReadAllText(string path) => FS_ReadFileText(path) ?? "";
+
+        // GetRealPath — return the absolute OS path for a virtual path, or empty if not found
+        public static string GetRealPath(string path)
+        {
+            path = path.Replace('\\', '/');
+            for (int i = _searchPaths.Count - 1; i >= 0; i--)
+            {
+                if (_searchPaths[i] is LooseDirectory ld)
+                {
+                    string full = System.IO.Path.Combine(ld.Root, path);
+                    if (File.Exists(full)) return full;
+                }
+            }
+            return "";
+        }
+
         // FS_Shutdown — clear all search paths
         public static void FS_Shutdown()
         {
@@ -121,6 +143,7 @@ namespace ET.Core
         private class LooseDirectory : SearchPath
         {
             private readonly string _root;
+            public string Root => _root;
             public LooseDirectory(string root) { _root = root; }
 
             public override byte[] ReadFile(string path)

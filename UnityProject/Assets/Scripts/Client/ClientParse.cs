@@ -102,7 +102,7 @@ namespace ET.Client
                 if (deltaBase.Valid && deltaBase.ServerTime == newSnap.DeltaNum)
                     oldPs = deltaBase.Ps;
             }
-            msg.ReadDeltaPlayerstate(oldPs, newSnap.Ps);
+            msg.ReadDeltaPlayerState(oldPs, newSnap.Ps);
 
             // Packet entities
             int parseEntitiesNum = ClientMain.Cl.ParseEntitiesNum;
@@ -231,7 +231,7 @@ namespace ET.Client
         }
 
         // Read an entity number encoded in GENTITYNUM_BITS
-        // NetMessage exposes the constant as NetMessage.GENTITYNUM_BITS if available;
+        // NetMessage exposes the constant as NetConst.GENTITYNUM_BITS if available;
         // fall back to reading a short and masking to 10 bits (1023 max vanilla ET).
         private static int ReadEntityNum(NetMessage msg)
         {

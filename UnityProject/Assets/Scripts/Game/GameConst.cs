@@ -271,4 +271,72 @@ namespace ET.Game
         public const int GT_WOLF_CP          = 4;
         public const int GT_WOLF_LMS         = 5;
     }
+
+    // GameConstants — unified constant namespace referenced by Server/BotAI files.
+    // Maps constants that live in various classes to a single access point.
+    public static class GameConstants
+    {
+        // Entity counts
+        public const int MAX_CLIENTS    = GameConst.MAX_CLIENTS;
+        public const int MAX_GENTITIES  = GameConst.MAX_GENTITIES;
+        public const int MAX_WEAPONS    = GameConst.MAX_WEAPONS;
+
+        // Persistant array indices
+        public const int PERS_SCORE     = GameConst.PERS_SCORE;
+        public const int PERS_TEAM      = GameConst.PERS_TEAM;
+
+        // Teams
+        public const int TEAM_FREE      = 0;
+        public const int TEAM_AXIS      = 1;
+        public const int TEAM_ALLIES    = 2;
+        public const int TEAM_SPECTATOR = 3;
+
+        // Game states (match sv_ccmds.c / g_match.c values)
+        public const int GS_PLAYING          = 0;
+        public const int GS_WARMUP           = 1;
+        public const int GS_WARMUP_COUNTDOWN = 2;
+        public const int GS_INTERMISSION     = 3;
+        public const int GS_INITIALIZE       = 4;
+        public const int GS_RESET            = 5;
+
+        // Entity types — cast from ET.Network.EntityType enum
+        public const int ET_WAYPOINT                = (int)ET.Network.EntityType.Waypoint;
+        public const int ET_CONSTRUCTIBLE_INDICATOR = (int)ET.Network.EntityType.ConstructibleIndicator;
+        public const int ET_EXPLOSIVE_INDICATOR     = (int)ET.Network.EntityType.ExplosiveIndicator;
+        public const int ET_TANK_INDICATOR          = (int)ET.Network.EntityType.TankIndicator;
+
+        // Trajectory types
+        public const int TR_STATIONARY = (int)ET.Network.TrajectoryType.Stationary;
+
+        // Server entity flags (svFlags_t)
+        public const int SVF_BROADCAST  = 0x0001;
+        public const int SVF_NOCLIENT   = 0x0002;
+        public const int SVF_PORTAL     = 0x0040;
+        public const int SVF_TRANSMIT_ALWAYS = 0x0080;
+
+        // Powerup array indices (PlayerState.Powerups[])
+        public const int PW_NONE      = 0;
+        public const int PW_REDFLAG   = 8;
+        public const int PW_BLUEFLAG  = 9;
+
+        // Weapon aliases
+        public const int WP_DYNAMITE      = GameConst.WP_DYNAMITE;
+        public const int WP_SATCHELCHARGE = GameConst.WP_SATCHEL;
+        public const int WP_LANDMINE      = GameConst.WP_LANDMINE;
+        public const int WP_KNIFE         = GameConst.WP_KNIFE;
+        public const int WP_MP40          = GameConst.WP_MP40;
+        public const int WP_THOMPSON      = GameConst.WP_THOMPSON;
+        public const int WP_PANZERFAUST   = GameConst.WP_PANZERFAUST;
+        public const int WP_FLAMETHROWER  = GameConst.WP_FLAMETHROWER;
+        public const int WP_GARAND        = GameConst.WP_GARAND;
+        public const int WP_FG42          = GameConst.WP_FG42;
+        public const int WP_SNIPERRIFLE   = GameConst.WP_GARAND;  // ET uses Garand as sniper base
+
+        // Stat indices
+        public const int STAT_HEALTH      = GameConst.STAT_HEALTH;
+        public const int STAT_ARMOR       = GameConst.STAT_HOLDABLE_ITEM;  // no ARMOR in ET; alias to safe slot
+
+        // Configstring offsets
+        public const int CS_CHARACTERS    = 768;  // ET: CS_CHARACTERS starts at 768
+    }
 }

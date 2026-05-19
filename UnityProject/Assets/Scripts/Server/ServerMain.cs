@@ -303,5 +303,21 @@ namespace ET.Server
             Sv.State       = ServerState.Dead;
             Svs.Initialized = false;
         }
+
+        // Convenience stubs for operator commands
+        public static void ForceMasterHeartbeat()          => Debug.Log("[Server] Heartbeat (stub)");
+        public static void SendMasterGameCompleteStatus()  => Debug.Log("[Server] GameCompleteStatus (stub)");
+
+        public static void SendServerCommand(ServerClient cl, string cmd)
+        {
+            if (cl == null)
+            {
+                int max = CvarSystem.sv_maxclients.IntValue;
+                for (int i = 0; i < max; i++)
+                    SV_AddServerCommand(Svs.Clients[i], cmd);
+            }
+            else
+                SV_AddServerCommand(cl, cmd);
+        }
     }
 }

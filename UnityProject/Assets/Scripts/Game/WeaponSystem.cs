@@ -53,9 +53,16 @@ namespace ET.Game
         public int     AttackerEntityNum;
         public int     Damage;
         public int     DFlags;
-        public int     Mod;       // means of death (MOD_*)
+        public int     DamageFlags { get => DFlags; set => DFlags = value; }
+        public int     Mod;          // means of death (MOD_*)
         public bool    Headshot;
-        public Vector3 Origin;   // impact point; Vector3.zero when not applicable
+        public Vector3 Origin;       // impact point; Vector3.zero when not applicable
+        // Extended fields used by DamageSystem
+        public int     Location;     // HitLocation enum value
+        public int     AttackerTeam;
+        public int     TargetTeam;
+        public int     TargetHealth; // target's health before damage
+        public int     VictimClass;  // player class (PC_*) of the victim
     }
 
     /// <summary>

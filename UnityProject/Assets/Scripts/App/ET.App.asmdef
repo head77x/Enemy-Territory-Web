@@ -1,17 +1,18 @@
 {
-    "name": "ET.BotAI",
-    "rootNamespace": "ET.BotAI",
+    "name": "ET.App",
+    "rootNamespace": "ET.App",
     "references": [
         "ET.Core",
         "ET.Network",
         "ET.Game",
-        "ET.Server"
+        "ET.Server",
+        "ET.Client",
+        "ET.BotAI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
-    "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],

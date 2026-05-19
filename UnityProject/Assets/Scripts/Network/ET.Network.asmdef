@@ -2,7 +2,7 @@
     "name": "ET.Network",
     "rootNamespace": "ET.Network",
     "references": [
-        "GUID:ET.Core"
+        "ET.Core"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

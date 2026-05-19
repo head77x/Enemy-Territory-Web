@@ -175,6 +175,12 @@ namespace ET.Game
             S_StartSound(null, 0, entchannel, sfxHandle);
         }
 
+        public static void PlayGlobalSound(string name)
+        {
+            int sfx = S_RegisterSound(name, false);
+            if (sfx > 0) S_StartLocalSound(sfx, 0);
+        }
+
         // ----------------------------------------------------------------
         // S_StartBackgroundTrack — start looping background music
         // intro plays once, loop then repeats indefinitely.

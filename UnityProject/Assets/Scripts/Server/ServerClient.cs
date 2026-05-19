@@ -14,7 +14,7 @@ namespace ET.Server
     /// Client connection management (sv_client.c port).
     /// Handles connect, disconnect, userinfo, usercmd processing.
     /// </summary>
-    public static class ServerClient
+    public static class SV_Client
     {
         // Maximum usercmds in one packet
         private const int MAX_PACKET_USERCMDS = ServerConst.MAX_PACKET_USERCMDS;
@@ -48,7 +48,7 @@ namespace ET.Server
             ch.Connected     = false;
             svs.Challenges[oldest] = ch;
 
-            NetChannel.SendOOBPrint(from, NetSrc.Server,
+            NetChannel.SendOOBPrint(NetSrc.Server, from,
                 $"challengeResponse {ch.ChallengeNum}");
         }
 
@@ -59,19 +59,19 @@ namespace ET.Server
         {
             var svs = ServerMain.Svs;
 
-            int version = ETShared.InfoValueForKeyInt(userInfo, "protocol");
+            int.TryParse(ETShared.Info_ValueForKey(userInfo, "protocol"), out int version);
             if (version != ServerInit.PROTOCOL_VERSION)
             {
-                NetChannel.SendOOBPrint(from, NetSrc.Server,
+                NetChannel.SendOOBPrint(NetSrc.Server, from,
                     "print\n[err_prot]Protocol version mismatch");
                 return;
             }
 
-            int challenge = ETShared.InfoValueForKeyInt(userInfo, "challenge");
-            int qport     = ETShared.InfoValueForKeyInt(userInfo, "qport");
+            int.TryParse(ETShared.Info_ValueForKey(userInfo, "challenge"), out int challenge);
+            int.TryParse(ETShared.Info_ValueForKey(userInfo, "qport"),     out int qport);
 
             // validate challenge
-            bool challengeOk = from.IsLoopback();
+            bool challengeOk = from.IsLocal;
             if (!challengeOk)
             {
                 for (int i = 0; i < ServerConst.MAX_CHALLENGES; i++)
@@ -90,7 +90,7 @@ namespace ET.Server
 
             if (!challengeOk)
             {
-                NetChannel.SendOOBPrint(from, NetSrc.Server,
+                NetChannel.SendOOBPrint(NetSrc.Server, from,
                     "print\n[err_dialog]No or bad challenge");
                 return;
             }
@@ -115,7 +115,7 @@ namespace ET.Server
 
             if (clientNum == -1)
             {
-                NetChannel.SendOOBPrint(from, NetSrc.Server,
+                NetChannel.SendOOBPrint(NetSrc.Server, from,
                     "print\n[err_dialog]Server is full");
                 return;
             }
@@ -149,15 +149,15 @@ namespace ET.Server
         {
             var info = cl.UserInfo;
 
-            cl.Name = ETShared.InfoValueForKey(info, "name");
+            cl.Name = ETShared.Info_ValueForKey(info, "name");
             if (string.IsNullOrEmpty(cl.Name)) cl.Name = "UnnamedPlayer";
 
-            int rate = ETShared.InfoValueForKeyInt(info, "rate");
+            int.TryParse(ETShared.Info_ValueForKey(info, "rate"), out int rate);
             if (rate < ServerConst.MIN_RATE)  rate = ServerConst.MIN_RATE;
             if (rate > 90000)                  rate = 90000;
             cl.Rate = rate;
 
-            int snapshotMsec = ETShared.InfoValueForKeyInt(info, "snaps");
+            int.TryParse(ETShared.Info_ValueForKey(info, "snaps"), out int snapshotMsec);
             if (snapshotMsec > 0)
                 cl.SnapshotMsec = 1000 / Math.Clamp(snapshotMsec, 1, 60);
         }
@@ -170,7 +170,7 @@ namespace ET.Server
             var sv  = ServerMain.Sv;
             var svs = ServerMain.Svs;
 
-            var buf = new byte[NetMessage.MAX_MSGLEN];
+            var buf = new byte[NetConst.MAX_MSGLEN];
             var msg = new NetMessage(buf, buf.Length);
 
             cl.GamestateMessageNum = cl.Netchan.OutgoingSequence;
@@ -314,7 +314,7 @@ namespace ET.Server
             for (int i = 0; i < cmdCount; i++)
             {
                 cmds[i] = new UserCmd();
-                msg.ReadDeltaUsercmd(oldcmd, cmds[i]);
+                msg.ReadDeltaUserCmd(oldcmd, cmds[i]);
                 oldcmd = cmds[i];
             }
 
@@ -356,5 +356,24 @@ namespace ET.Server
 
         // Raised when a client sends a command string (replaces SV_ExecuteClientCommand)
         public static event Action<int, string, string> OnClientCommand;
+
+        // DropClient — convenience wrapper for operator commands
+        public static void DropClient(int clientNum, string reason)
+        {
+            var svs = ServerMain.Svs;
+            if (clientNum < 0 || clientNum >= svs.Clients.Length) return;
+            ServerMain.SV_DropClient(svs.Clients[clientNum], reason);
+        }
+
+        // ConnectBot — mark a slot as a bot client
+        public static void ConnectBot(int clientNum)
+        {
+            var svs = ServerMain.Svs;
+            if (clientNum < 0 || clientNum >= svs.Clients.Length) return;
+            var cl = svs.Clients[clientNum];
+            cl.State   = ClientState.Active;
+            cl.IsBot   = true;
+            cl.Name    = $"Bot_{clientNum}";
+        }
     }
 }

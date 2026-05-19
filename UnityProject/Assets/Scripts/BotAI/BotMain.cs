@@ -358,18 +358,23 @@ namespace ET.BotAI
                 Vector3 aimDir        = AimWithNoise(bot, bot.EnemyPos);
                 Quaternion aimRot     = Quaternion.LookRotation(aimDir);
                 Vector3 euler         = aimRot.eulerAngles;
-                cmd.ViewAngles        = new Vector3(euler.x, euler.y, euler.z);
+                cmd.Angles[0] = (int)(euler.x * (65536f / 360f)) & 0xFFFF;
+                cmd.Angles[1] = (int)(euler.y * (65536f / 360f)) & 0xFFFF;
+                cmd.Angles[2] = (int)(euler.z * (65536f / 360f)) & 0xFFFF;
             }
             else if (vel.sqrMagnitude > 0.01f)
             {
                 // Face movement direction while not attacking
                 Quaternion moveRot    = Quaternion.LookRotation(vel.normalized);
-                cmd.ViewAngles        = moveRot.eulerAngles;
+                Vector3 euler         = moveRot.eulerAngles;
+                cmd.Angles[0] = (int)(euler.x * (65536f / 360f)) & 0xFFFF;
+                cmd.Angles[1] = (int)(euler.y * (65536f / 360f)) & 0xFFFF;
+                cmd.Angles[2] = (int)(euler.z * (65536f / 360f)) & 0xFFFF;
             }
 
             // --- Buttons ---
             if (bot.State == BotState.Attacking && CanSeeTarget(bot))
-                cmd.Buttons |= ButtonFlags.Attack;
+                cmd.Buttons |= Button.Attack;
 
             return cmd;
         }

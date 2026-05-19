@@ -125,7 +125,7 @@ namespace ET.Client
             h_.Player.targetTexture = h_.RenderTex;
 
             // Resolve path via FileSystem
-            string absPath = FileSystem.Instance.GetRealPath(filename);
+            string absPath = FileSystem.GetRealPath(filename);
             if (!string.IsNullOrEmpty(absPath))
             {
                 h_.Player.url = "file://" + absPath;

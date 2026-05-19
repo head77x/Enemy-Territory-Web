@@ -95,11 +95,11 @@ namespace ET.Client
 
         private static void RegisterCommands()
         {
-            var cmd = CmdSystem.Instance;
-            cmd.AddCommand("bind",      args => Cmd_Bind(args));
-            cmd.AddCommand("unbind",    args => Cmd_Unbind(args));
-            cmd.AddCommand("unbindall", args => Cmd_UnbindAll(args));
-            cmd.AddCommand("bindlist",  args => Cmd_BindList(args));
+            
+            CmdSystem.Cmd_AddCommand("bind",      args => Cmd_Bind(args));
+            CmdSystem.Cmd_AddCommand("unbind",    args => Cmd_Unbind(args));
+            CmdSystem.Cmd_AddCommand("unbindall", args => Cmd_UnbindAll(args));
+            CmdSystem.Cmd_AddCommand("bindlist",  args => Cmd_BindList(args));
         }
 
         // Key_StringToKeynum
@@ -176,7 +176,7 @@ namespace ET.Client
             if (down) key.Repeats++; else key.Repeats = 0;
 
             if (!string.IsNullOrEmpty(key.Binding) && down)
-                CmdSystem.Instance.ExecuteText(key.Binding);
+                CmdSystem.Cmd_ExecuteString(key.Binding);
         }
 
         // Key_WriteBindings — produces "bind KEY CMD\n" lines for config save
@@ -280,10 +280,10 @@ namespace ET.Client
             Con.Display     = Con.Current;
             Initialized     = true;
 
-            var cmd = CmdSystem.Instance;
-            cmd.AddCommand("toggleconsole", args => ToggleConsole());
-            cmd.AddCommand("clear",         args => Clear());
-            cmd.AddCommand("condump",       args => Dump(args));
+            
+            CmdSystem.Cmd_AddCommand("toggleconsole", args => ToggleConsole());
+            CmdSystem.Cmd_AddCommand("clear",         args => Clear());
+            CmdSystem.Cmd_AddCommand("condump",       args => Dump(args));
         }
 
         // Con_ToggleConsole_f
@@ -315,7 +315,7 @@ namespace ET.Client
                     sb.Append(Con.Text[start + j] == 0 ? ' ' : Con.Text[start + j]);
                 sb.AppendLine();
             }
-            FileSystem.Instance.WriteAllText(filename, sb.ToString());
+            FileSystem.WriteAllText(filename, sb.ToString());
             Debug.Log($"Dumped console text to {filename}");
         }
 
@@ -409,9 +409,9 @@ namespace ET.Client
         public static void Init()
         {
             Initialized = true;
-            var cmd = CmdSystem.Instance;
-            cmd.AddCommand("screenshotJPEG", args => TakeScreenshot(true));
-            cmd.AddCommand("screenshot",     args => TakeScreenshot(false));
+            
+            CmdSystem.Cmd_AddCommand("screenshotJPEG", args => TakeScreenshot(true));
+            CmdSystem.Cmd_AddCommand("screenshot",     args => TakeScreenshot(false));
         }
 
         // SCR_AdjustFrom640 — maps 640×480 virtual coords to screen
@@ -513,16 +513,16 @@ namespace ET.Client
 
         // UI dispatch — in ET this called VM_Call; here we call UISystem directly
         public static void SetActiveMenu(int menuId) =>
-            UISystem.Instance?.SetActiveMenu((UIMenuType)menuId);
+            UISystem.UI_SetActiveMenu((UIMenuType)menuId);
 
         public static void KeyEvent(int key, bool down) =>
-            UISystem.Instance?.KeyEvent(key, down);
+            UISystem.UI_KeyEvent(key, down);
 
         public static void MouseEvent(int dx, int dy) =>
-            UISystem.Instance?.MouseEvent(dx, dy);
+            UISystem.UI_MouseEvent(dx, dy);
 
         public static void Refresh(int time) =>
-            UISystem.Instance?.Refresh(time);
+            UISystem.UI_RefreshMenuItems();
 
         // LAN_LoadCachedServers — load from PlayerPrefs
         public static void LoadCachedServers()
@@ -623,12 +623,12 @@ namespace ET.Client
                                            out int clientNum, out int lastPacketSentTime,
                                            out int lastPacketTime)
         {
-            var cls = ClientMain.Instance;
-            servername         = cls?.ServerName ?? "";
-            connectPacketCount = cls?.ConnectPacketCount ?? 0;
-            clientNum          = cls?.ClientNum ?? 0;
-            lastPacketSentTime = cls?.LastPacketSentTime ?? 0;
-            lastPacketTime     = cls?.LastPacketTime ?? 0;
+            var clc = ClientMain.Clc;
+            servername         = clc?.ServerAddress?.ToString() ?? "";
+            connectPacketCount = 0;   // not tracked in this port
+            clientNum          = clc?.ClientNum ?? 0;
+            lastPacketSentTime = 0;   // not tracked in this port
+            lastPacketTime     = 0;   // not tracked in this port
         }
     }
 }

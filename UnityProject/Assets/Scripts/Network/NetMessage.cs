@@ -130,21 +130,23 @@ namespace ET.Network
             {
                 value &= (int)(0xFFFFFFFFu >> (32 - bits));
                 int rem = bits & 7;
+                int bitPos = Bit;   // local copy — properties can't be ref-passed in C#
                 if (rem != 0)
                 {
                     for (int i = 0; i < rem; i++)
                     {
-                        Huffman.PutBitStatic(value & 1, Data, ref _bit);
+                        Huffman.PutBitStatic(value & 1, Data, ref bitPos);
                         value >>= 1;
                     }
                     bits -= rem;
                 }
                 for (int i = 0; i < bits; i += 8)
                 {
-                    _msgHuff.OffsetTransmit(value & 0xFF, Data, ref _bit);
+                    _msgHuff.OffsetTransmit(value & 0xFF, Data, ref bitPos);
                     value >>= 8;
                 }
-                CurSize = (_bit >> 3) + 1;
+                Bit = bitPos;
+                CurSize = (Bit >> 3) + 1;
             }
         }
 
@@ -164,16 +166,18 @@ namespace ET.Network
             else
             {
                 value = 0;
+                int bitPos = Bit;   // local copy for ref-passing
                 int nbits = bits & 7;
                 for (int i = 0; i < nbits; i++)
-                    value |= Huffman.GetBitStatic(Data, ref _bit) << i;
+                    value |= Huffman.GetBitStatic(Data, ref bitPos) << i;
 
                 for (int i = 0; i < (bits - nbits); i += 8)
                 {
-                    _msgHuff.OffsetReceive(Data, ref _bit, out int ch);
+                    _msgHuff.OffsetReceive(Data, ref bitPos, out int ch);
                     value |= (ch << (i + nbits));
                 }
-                ReadCount = (_bit >> 3) + 1;
+                Bit = bitPos;
+                ReadCount = (Bit >> 3) + 1;
             }
 
             if (sgn && (value & (1 << (bits - 1))) != 0)
@@ -182,8 +186,6 @@ namespace ET.Network
             return value;
         }
 
-        // _bit is a local alias for Bit so the inline helpers can use ref
-        private int _bit { get => Bit; set => Bit = value; }
 
         // -------------------------------------------------------
         // Typed write helpers

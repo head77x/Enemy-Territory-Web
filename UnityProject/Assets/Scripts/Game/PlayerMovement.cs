@@ -142,14 +142,14 @@ namespace ET.Game
 
         private int BG_FootstepForSurface(int surfaceFlags)
         {
-            if ((surfaceFlags & SurfaceFlags.SURF_NOSTEPS) != 0) return 0;
-            if ((surfaceFlags & SurfaceFlags.SURF_METAL)   != 0) return 1;
-            if ((surfaceFlags & SurfaceFlags.SURF_WOOD)    != 0) return 2;
-            if ((surfaceFlags & SurfaceFlags.SURF_GRASS)   != 0) return 3;
-            if ((surfaceFlags & SurfaceFlags.SURF_GRAVEL)  != 0) return 4;
-            if ((surfaceFlags & SurfaceFlags.SURF_SNOW)    != 0) return 5;
-            if ((surfaceFlags & SurfaceFlags.SURF_ROOF)    != 0) return 6;
-            if ((surfaceFlags & SurfaceFlags.SURF_CARPET)  != 0) return 7;
+            if ((surfaceFlags & Surf.NoSteps) != 0) return 0;
+            if ((surfaceFlags & Surf.Metal)   != 0) return 1;
+            if ((surfaceFlags & Surf.Wood)    != 0) return 2;
+            if ((surfaceFlags & Surf.Grass)   != 0) return 3;
+            if ((surfaceFlags & Surf.Gravel)  != 0) return 4;
+            if ((surfaceFlags & Surf.Snow)    != 0) return 5;
+            if ((surfaceFlags & Surf.Roof)    != 0) return 6;
+            if ((surfaceFlags & Surf.Carpet)  != 0) return 7;
             return 0;
         }
 
@@ -340,7 +340,7 @@ namespace ET.Game
         {
             legsOffset = 0f;
             int mask = traceMask &
-                ~(SurfaceFlags.CONTENTS_BODY | SurfaceFlags.CONTENTS_CORPSE);
+                ~(Contents.Body | Contents.Corpse);
 
             float angle = viewAngles.y * Mathf.Deg2Rad;
             Vector3 flatforward = new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f);
@@ -415,7 +415,7 @@ namespace ET.Game
                 drop += speed * 20f * _pml.FrameTime;
 
             if (_pm.WaterLevel <= 1 && _pml.Walking &&
-                (_pml.GroundTrace.SurfaceFlags & SurfaceFlags.SURF_SLICK) == 0)
+                (_pml.GroundTrace.SurfaceFlags & Surf.Slick) == 0)
             {
                 if ((_pm.Ps.PmFlags & GameConst.PMF_TIME_KNOCKBACK) == 0)
                 {
@@ -427,7 +427,7 @@ namespace ET.Game
             if (_pm.WaterLevel > 0)
             {
                 drop += speed *
-                    (_pm.WaterType == SurfaceFlags.CONTENTS_SLIME
+                    (_pm.WaterType == Contents.Slime
                         ? PM_SlagFriction : PM_WaterFriction) *
                     _pm.WaterLevel * _pml.FrameTime;
             }
@@ -595,7 +595,7 @@ namespace ET.Game
             spot.z += 4f;
 
             int cont = _pm.PointContents(spot, _pm.Ps.ClientNum);
-            if ((cont & SurfaceFlags.CONTENTS_SOLID) == 0) return false;
+            if ((cont & Contents.Solid) == 0) return false;
 
             spot.z += 16f;
             cont = _pm.PointContents(spot, _pm.Ps.ClientNum);
@@ -747,7 +747,7 @@ namespace ET.Game
             float wishspeed = wishdir.magnitude;
             if (wishspeed > 0f) wishdir /= wishspeed;
 
-            if (_pm.WaterType == SurfaceFlags.CONTENTS_SLIME)
+            if (_pm.WaterType == Contents.Slime)
             {
                 float maxsp = _pm.Ps.Speed * PM_SlagSwimScale;
                 if (wishspeed > maxsp) wishspeed = maxsp;
@@ -905,14 +905,14 @@ namespace ET.Game
             if (_pm.WaterLevel > 0)
             {
                 float wsc = _pm.WaterLevel / 3f;
-                wsc = _pm.WaterType == SurfaceFlags.CONTENTS_SLIME
+                wsc = _pm.WaterType == Contents.Slime
                     ? 1f - (1f - PM_SlagSwimScale)  * wsc
                     : 1f - (1f - PM_WaterSwimScale)  * wsc;
                 float mx = _pm.Ps.Speed * wsc;
                 if (wishspeed > mx) wishspeed = mx;
             }
 
-            bool slick = (_pml.GroundTrace.SurfaceFlags & SurfaceFlags.SURF_SLICK) != 0 ||
+            bool slick = (_pml.GroundTrace.SurfaceFlags & Surf.Slick) != 0 ||
                          (_pm.Ps.PmFlags & GameConst.PMF_TIME_KNOCKBACK) != 0;
             PM_Accelerate(wishdir, wishspeed, slick ? PM_AirAccelerate : PM_AccelerateVal);
 
@@ -920,7 +920,7 @@ namespace ET.Game
                 _pm.Ps.Velocity2 -= _pm.Ps.Gravity * _pml.FrameTime;
 
             // Snow breath
-            if ((_pml.GroundTrace.SurfaceFlags & SurfaceFlags.SURF_SNOW) != 0)
+            if ((_pml.GroundTrace.SurfaceFlags & Surf.Snow) != 0)
                 _pm.Ps.EFlags |= EF_BREATH;
             else
                 _pm.Ps.EFlags &= ~EF_BREATH;
@@ -1024,7 +1024,7 @@ namespace ET.Game
             if (_pm.WaterLevel == 1) delta *= 0.5f;
             if (delta < 1f) return;
 
-            if ((_pml.GroundTrace.SurfaceFlags & SurfaceFlags.SURF_NODAMAGE) == 0)
+            if ((_pml.GroundTrace.SurfaceFlags & Surf.NoDamage) == 0)
             {
                 int surf = PM_FootstepForSurface();
                 if      (delta > 77f)    AddEvent(EV_FALL_NDIE,   surf);
@@ -1192,7 +1192,7 @@ namespace ET.Game
             Vector3 pt = new Vector3(_pm.Ps.Origin0, _pm.Ps.Origin1, _pm.Ps.Origin2 + minsZ + 1f);
             int cont = _pm.PointContents(pt, _pm.Ps.ClientNum);
 
-            if ((cont & SurfaceFlags.MASK_WATER) != 0)
+            if ((cont & Contents.MaskWater) != 0)
             {
                 float sample2 = _pm.Ps.ViewHeight - minsZ;
                 float sample1 = sample2 * 0.5f;
@@ -1202,12 +1202,12 @@ namespace ET.Game
 
                 pt.z = _pm.Ps.Origin2 + minsZ + sample1;
                 cont = _pm.PointContents(pt, _pm.Ps.ClientNum);
-                if ((cont & SurfaceFlags.MASK_WATER) != 0)
+                if ((cont & Contents.MaskWater) != 0)
                 {
                     _pm.WaterLevel = 2;
                     pt.z = _pm.Ps.Origin2 + minsZ + sample2;
                     cont = _pm.PointContents(pt, _pm.Ps.ClientNum);
-                    if ((cont & SurfaceFlags.MASK_WATER) != 0)
+                    if ((cont & Contents.MaskWater) != 0)
                         _pm.WaterLevel = 3;
                 }
             }
@@ -3023,7 +3023,7 @@ namespace ET.Game
         // -----------------------------------------------------------------------
         private void PM_UpdateLean(
             PlayerState ps, UserCmd cmd,
-            Func<Vector3, Vector3, Vector3, Vector3, int, int, TraceResult> traceFn)
+            TraceFunc traceFn)
         {
             int leaning = 0;
             if (((cmd.WButtons & (WButton.LeanLeft | WButton.LeanRight)) != 0) &&
@@ -3069,7 +3069,7 @@ namespace ET.Game
 
                 Vector3 tmins = new Vector3(-8f, -8f, -7f);
                 Vector3 tmaxs = new Vector3( 8f,  8f,  4f);
-                TraceResult tr = traceFn(start, tmins, tmaxs, end, ps.ClientNum, SurfaceFlags.MASK_PLAYERSOLID);
+                TraceResult tr = traceFn(start, tmins, tmaxs, end, ps.ClientNum, Contents.MaskPlayerSolid);
                 ps.Leanf *= tr.Fraction;
             }
 
@@ -3109,7 +3109,7 @@ namespace ET.Game
                 origin, _pm.Mins, _pm.Maxs,
                 origin + ff * tracedist, _pm.Ps.ClientNum, _pm.TraceMask);
 
-            if (trace.Fraction < 1f && (trace.SurfaceFlags & SurfaceFlags.SURF_LADDER) != 0)
+            if (trace.Fraction < 1f && (trace.SurfaceFlags & Surf.Ladder) != 0)
             {
                 _pml.Ladder = true;
                 _ladderVec  = trace.PlaneNormal;
@@ -3122,7 +3122,7 @@ namespace ET.Game
                 trace = _pm.Trace(
                     origin, mins, _pm.Maxs,
                     origin - _ladderVec * tracedist, _pm.Ps.ClientNum, _pm.TraceMask);
-                if (trace.Fraction < 1f && (trace.SurfaceFlags & SurfaceFlags.SURF_LADDER) != 0)
+                if (trace.Fraction < 1f && (trace.SurfaceFlags & Surf.Ladder) != 0)
                 {
                     _ladderForward  = true;
                     _pml.Ladder     = true;
@@ -3264,7 +3264,7 @@ namespace ET.Game
         // -----------------------------------------------------------------------
         public static void UpdateViewAngles(
             PlayerState ps, PmoveExt pmext, UserCmd cmd,
-            Func<Vector3, Vector3, Vector3, Vector3, int, int, TraceResult> trace,
+            TraceFunc trace,
             int traceMask)
         {
             const int PITCH = 0, YAW = 1;
@@ -3400,7 +3400,7 @@ namespace ET.Game
                 if (ps.ViewAngles1 != oldYaw)
                 {
                     Vector3 origin = new Vector3(ps.Origin0, ps.Origin1, ps.Origin2);
-                    int mask = traceMask & ~(SurfaceFlags.CONTENTS_BODY | SurfaceFlags.CONTENTS_CORPSE);
+                    int mask = traceMask & ~(Contents.Body | Contents.Corpse);
                     float ang = ps.ViewAngles1 * Mathf.Deg2Rad;
                     Vector3 ff  = new Vector3(Mathf.Cos(ang), Mathf.Sin(ang), 0f);
                     Vector3 org = origin + ff * -32f;
@@ -3438,7 +3438,7 @@ namespace ET.Game
 
             if (_pm.Ps.Stats[GameConst.STAT_HEALTH] <= 0)
             {
-                _pm.TraceMask &= ~SurfaceFlags.CONTENTS_BODY;
+                _pm.TraceMask &= ~Contents.Body;
                 _pm.Ps.EFlags &= ~EF_ZOOMING_INT;
             }
 
@@ -3669,7 +3669,7 @@ namespace ET.Game
 
             if ((pmove.Ps.Stats[GameConst.STAT_HEALTH] <= 0 ||
                  pmove.Ps.PmType == GameConst.PM_DEAD) &&
-                (_pml.GroundTrace.SurfaceFlags & SurfaceFlags.SURF_MONSTERSLICK) != 0)
+                (_pml.GroundTrace.SurfaceFlags & Surf.MonsterSlick) != 0)
             {
                 return _pml.GroundTrace.SurfaceFlags;
             }

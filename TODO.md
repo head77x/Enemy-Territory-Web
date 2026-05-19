@@ -135,12 +135,24 @@
 | `Client/CGamePanels.cs` | `cg_panelhandling.c`, `cg_missionbriefing.c` | PanelButton 시스템, .campaign/.arena 파서, CampaignInfo/ArenaInfo, 미션 브리핑 이벤트 |
 | `Client/CGameSound.cs` | `cg_sound.c` | cgame 사운드 스크립트 시스템 (4096 스크립트 / 8192 사운드), 해시 테이블 조회, 버퍼드 큐, ScriptSpeaker 풀, AudioSystem 위임 |
 
+### Layer 13 — qcommon/서버/클라이언트/봇AI 잔여 파일 ✅
+
+| C# 파일 | 원본 C 파일 | 설명 |
+|---------|-----------|------|
+| `Core/CommonSystem.cs` | `qcommon/common.c` | Com_Init/Frame/Error/Printf/DPrintf, 이벤트 루프, 커맨드라인 파싱, 설정 I/O, HashKey/Filter/StringContains, ModifyMsec, Quit/Shutdown |
+| `Server/GameServerUtils.cs` | `g_buddy_list.c`, `g_sv_entities.c`, `g_systemmsg.c` | WaypointSystem (G_SetWayPoint/ClearWayPoint), ServerEntityPool (MAX_SERVER_ENTITIES=4096, Init/Alloc/Get/Find), SystemMessageSystem (11가지 메시지, 15000ms 팀별 쿨다운, G_NeedEngineers/CheckForNeededClasses/CheckMenDown) |
+| `Server/ServerConsoleCommands.cs` | `sv_ccmds.c`, `sv_bot.c`, `sv_net_chan.c` | ServerConsoleCommands (14개 오퍼레이터 명령, SV_TransitionGameState 상태 머신), ServerBotIntegration (AllocateBotClient/FreeClient/InPVS/IsBot), ServerNetChan (XOR 인코딩/디코딩, SV_ENCODE_START=4, SV_DECODE_START=12) |
+| `Client/ClientSystem.cs` | `cl_keys.c`, `cl_console.c`, `cl_scrn.c`, `cl_ui.c` | KeySystem (ETKey 320키, SetBinding/GetBinding/OnKeyEvent, WriteBindings), ClientConsole (32768자 링버퍼, 32개 히스토리, 슬라이드 애니메이션), ClientScreen (AdjustFrom640, FillRect/DrawNamedPic 이벤트, DebugGraph 1024샘플), ClientUI (LAN/글로벌/즐겨찾기 서버 브라우저, PlayerPrefs 캐시) |
+| `Client/CinematicSystem.cs` | `cl_cin.c`, `cg_loadpanel.c`, `ui_loadpanel.c`, `ui_util.c` | CinematicSystem (MAX_VIDEO_HANDLES=16, VideoPlayer+RenderTexture, CIN_Play/Run/Stop/Draw/SetExtents/SetLooping), LoadPanel (LoadPanelData, UpdateProgress/SetMapName/SetCampaignData, OnRender 이벤트) |
+| `BotAI/BotTeamAI.cs` | `ai_team.c`, `ai_cmd.c`, `ai_script.c`, `ai_script_actions.c` | BotScriptSystem (.script 파일 파서, 이벤트/액션 체인, accum/if/setweapon/movetomarker), BotTeamAI (유효 리더 탐색, NavMesh 이동시간 정렬, 폭발물/건설 목표), BotCommands (AddressedToBot, MatchHelp/Camp/Patrol/GetItem/RushBase) |
+| `BotAI/BotCombatAI.cs` | `ai_dmgoal_mp.c`, `ai_dmnet_mp.c`, `ai_dmq3.c` | BotState (40개 필드), BotGoalType (16종), BotAIState (17상태), BotGoalSystem (클래스별 우선순위 테이블, FindGoal/CheckClassActions, FindNearestEnemy/FallenTeammate), BotStateMachine (17개 Node_* 핸들러), BotCombat (ChooseWeapon/OptimalRange/FaceTarget/UpdateInventory) |
+
 ---
 
 ## 변환 진행률
 
 ```
-전체 원본 C 소스: ~473,000줄 (456 파일)       C# 파일: 74개, ~37,500줄
+전체 원본 C 소스: ~473,000줄 (456 파일)       C# 파일: 81개, ~52,000줄
 ────────────────────────────────────────────────────────────────────
 Layer 1  완료:  ~4,500줄  (q_math, q_shared, huffman, md4, cmd, files)
 Layer 2  완료:  ~3,300줄  (msg, net_chan, netField 타입)
@@ -169,12 +181,18 @@ Layer 10 완료:  ~6,400줄  (cg_main, cg_snapshot, cg_predict, cg_ents, cg_play
 Layer 11 완료:  ~700줄   (ui_main, ui_shared, ui_atoms, ui_players, ui_gameinfo)
 Layer 12 완료:  ~4,400줄  (g_cmds_ext, g_character, g_config, g_mem, g_save(stub),
                             cg_panelhandling, cg_missionbriefing, cg_sound)
+Layer 13 완료:  ~9,000줄  (common.c, g_buddy_list, g_sv_entities, g_systemmsg,
+                            sv_ccmds, sv_bot, sv_net_chan, cl_keys, cl_console,
+                            cl_scrn, cl_ui, cl_cin, cg_loadpanel, ui_loadpanel,
+                            ui_util, ai_team, ai_cmd, ai_script, ai_script_actions,
+                            ai_dmgoal_mp, ai_dmnet_mp, ai_dmq3)
 ────────────────────────────────────────────────────────────────────
-현재까지 포팅: ~55,000줄  (약 11.6%)
+현재까지 포팅: ~64,400줄  (약 13.6%)
 렌더러 교체:   Unity URP로 완전 대체 (OpenGL → URP, tr_*.c 불필요)
 봇 AI:        AAS → Unity NavMesh 대체 완료
 충돌 감지:    cm_*.c → Unity PhysX 대체 완료
 오디오:       snd_*.c → Unity AudioSource 풀 대체 완료
+영상 재생:    ROQ 코덱 → Unity VideoPlayer + RenderTexture 대체 완료
 ```
 
 ---

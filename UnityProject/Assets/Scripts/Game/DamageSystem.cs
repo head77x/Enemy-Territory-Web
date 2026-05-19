@@ -183,7 +183,7 @@ namespace ET.Game
         /// Applies locational multipliers, friendly-fire scaling, then raises
         /// OnDamageResolved and — when the target dies — OnPlayerDeath / OnKill.
         /// </summary>
-        private static void HandleDamage(WeaponSystem.DamageInfo info)
+        private static void HandleDamage(DamageInfo info)
         {
             // Validate participants.
             if (info.TargetEntityNum  < 0) return;

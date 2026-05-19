@@ -290,14 +290,14 @@ namespace ET.Server
             }
             // Relay to network layer; stub call — real implementation routes through
             // ServerMain.SV_SendServerCommand
-            NetworkManager.SendReliableCommand(ent.EntityNum, sb.ToString());
+            ServerGameLogic.SendServerCommand(ent.EntityNum, sb.ToString());
         }
 
         private static void Cmd_Where_f(GEntity ent)
         {
             if (ent?.Client == null) return;
             Vector3 o = ent.Origin;
-            NetworkManager.SendReliableCommand(ent.EntityNum,
+            ServerGameLogic.SendServerCommand(ent.EntityNum,
                 $"print \"origin {o.x:F1} {o.y:F1} {o.z:F1}\n\"");
         }
 
@@ -305,7 +305,7 @@ namespace ET.Server
         {
             if (ent?.Client == null) return;
             var c = ent.Client;
-            NetworkManager.SendReliableCommand(ent.EntityNum,
+            ServerGameLogic.SendServerCommand(ent.EntityNum,
                 $"print \"XP: {c.XP}  Kills: {c.Pers.Kills}  Deaths: {c.Pers.Deaths}\n\"");
         }
 
@@ -337,6 +337,11 @@ namespace ET.Server
             if (weapon == GameConst.WP_NONE) return;
 
             WeaponSystem.DropWeapon(ent, weapon);
+        }
+
+        public static void SayTeamNoLocation(GEntity ent)
+        {
+            Cmd_Say_f(ent, ChatType.Team);
         }
 
         // -----------------------------------------------------------------------
@@ -423,7 +428,7 @@ namespace ET.Server
                 };
 
                 if (send)
-                    NetworkManager.SendReliableCommand(i, msg);
+                    ServerGameLogic.SendServerCommand(i, msg);
             }
 
             OnChatMessage?.Invoke(senderNum, type, text);
@@ -518,7 +523,7 @@ namespace ET.Server
                 {
                     var e = ServerGameLogic.Entities[i];
                     if (e != null && e.InUse && e.Client != null)
-                        NetworkManager.SendReliableCommand(i, $"cp \"{msg}\"");
+                        ServerGameLogic.SendServerCommand(i, $"cp \"{msg}\"");
                 }
             };
         }
@@ -569,7 +574,9 @@ namespace ET.Server
                 if (dest == null) return;
 
                 ServerGameLogic.G_SetOrigin(activator, dest.Origin);
-                activator.Client.PS.Velocity = Vector3.zero;
+                activator.Client.PS.Velocity0 = 0f;
+                activator.Client.PS.Velocity1 = 0f;
+                activator.Client.PS.Velocity2 = 0f;
                 activator.Client.Sess.TelePorted++;
             };
         }
@@ -615,7 +622,7 @@ namespace ET.Server
         {
             G_SpawnString(ent, "model", "", out string model);
             ent.ClassName = "misc_model";
-            ent.S.ModelIndex = NetworkManager.RegisterModel(model);
+            ent.S.ModelIndex = ServerGameLogic.G_ModelIndex(model);
             ServerGameLogic.G_SetOrigin(ent, ent.Origin);
         }
 
@@ -623,7 +630,7 @@ namespace ET.Server
         {
             G_SpawnString(ent, "model", "", out string model);
             ent.ClassName = "misc_gamemodel";
-            ent.S.ModelIndex = NetworkManager.RegisterModel(model);
+            ent.S.ModelIndex = ServerGameLogic.G_ModelIndex(model);
             ServerGameLogic.G_SetOrigin(ent, ent.Origin);
 
             GameScript.G_Script_ScriptEvent(ent, ScriptEventType.Spawn, string.Empty);
@@ -696,7 +703,7 @@ namespace ET.Server
             ent.ClassName  = "trigger_objective_info";
             ent.TargetName = track;
 
-            ent.Touch = (self, other, _) =>
+            ent.Touch = (self, other) =>
             {
                 if (other?.Client == null) return;
                 GameScript.G_Script_ScriptEvent(self, ScriptEventType.Trigger, string.Empty);
@@ -711,7 +718,7 @@ namespace ET.Server
 
             ent.ClassName = "trigger_multiple";
 
-            ent.Touch = (self, other, _) =>
+            ent.Touch = (self, other) =>
             {
                 if (other?.Client == null) return;
                 if (ServerGameLogic.Level.Time < self.Timestamp) return;
@@ -725,7 +732,7 @@ namespace ET.Server
         {
             ent.ClassName = "trigger_once";
 
-            ent.Touch = (self, other, _) =>
+            ent.Touch = (self, other) =>
             {
                 if (other?.Client == null) return;
                 ServerGameLogic.G_UseTargets(self, other);
@@ -740,7 +747,7 @@ namespace ET.Server
 
             ent.ClassName = "trigger_push";
 
-            ent.Touch = (self, other, _) =>
+            ent.Touch = (self, other) =>
             {
                 if (other?.Client == null) return;
 
@@ -748,7 +755,10 @@ namespace ET.Server
                 if (dest == null) return;
 
                 Vector3 dir = (dest.Origin - other.Origin).normalized;
-                other.Client.PS.Velocity = dir * speed;
+                Vector3 vel = dir * speed;
+                other.Client.PS.Velocity0 = vel.x;
+                other.Client.PS.Velocity1 = vel.y;
+                other.Client.PS.Velocity2 = vel.z;
             };
         }
 

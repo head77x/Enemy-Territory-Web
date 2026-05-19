@@ -134,7 +134,7 @@ namespace ET.Server
             var se = Alloc();
             se.ClassName  = ent.ClassName ?? "";
             se.Name       = ent.TargetName ?? "";
-            se.Target     = ent.Target ?? "";
+            se.Target     = ent.TargetName ?? "";
             se.SpawnFlags = ent.SpawnFlags;
             se.Team       = ent.Team;
             se.Origin     = ent.Origin;

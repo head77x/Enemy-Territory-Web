@@ -89,6 +89,11 @@ namespace ET.Network
         CommandmapMarker,
         WolfObjective,
         Events,   // base — add eventNum to get specific event entity
+        PortalSurface,
+        PortalCamera,
+        MG42Mount,
+        AAGun,
+        Flak,
     }
 
     /// <summary>trajectory_t — position/angular interpolation descriptor.</summary>

@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using ET.Core;
 using ET.Game;
 using ET.Network;
 
@@ -166,6 +167,12 @@ namespace ET.Server
             if (args.Length < 2 || !int.TryParse(args[1], out int num))
             { Debug.Log("Usage: clientkick <num>"); return; }
             SV_Client.DropClient(num, "kicked");
+        }
+
+        // SV_KillServer_f — shuts down the server
+        private static void Cmd_KillServer(string[] args)
+        {
+            ServerInit.SV_Shutdown("Server killed by operator.");
         }
 
         // SV_Ban_f — IP ban (stored in cvar list, cleared on restart)

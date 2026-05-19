@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using ET.Core;
 using ET.Game;
 
 namespace ET.Server

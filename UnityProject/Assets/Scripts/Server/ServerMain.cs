@@ -304,6 +304,26 @@ namespace ET.Server
             Svs.Initialized = false;
         }
 
+        public static string SV_GetConfigstring(int index)
+        {
+            if (index < 0 || index >= ServerConst.MAX_CONFIGSTRINGS) return "";
+            return Sv.Configstrings[index] ?? "";
+        }
+
+        private static readonly string[] _modelNames = new string[GameConst.MAX_GENTITIES];
+        private static int _numModels = 1; // 0 = empty slot
+
+        public static int SV_ModelIndex(string model)
+        {
+            if (string.IsNullOrEmpty(model)) return 0;
+            for (int i = 1; i < _numModels; i++)
+                if (_modelNames[i] == model) return i;
+            if (_numModels >= GameConst.MAX_GENTITIES) return 0;
+            _modelNames[_numModels] = model;
+            SV_SetConfigstring(CS_MODELS + _numModels, model);
+            return _numModels++;
+        }
+
         // Convenience stubs for operator commands
         public static void ForceMasterHeartbeat()          => Debug.Log("[Server] Heartbeat (stub)");
         public static void SendMasterGameCompleteStatus()  => Debug.Log("[Server] GameCompleteStatus (stub)");

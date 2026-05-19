@@ -6,6 +6,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using ET.Core;
 using ET.Game;
 
 namespace ET.Client
@@ -99,14 +100,7 @@ namespace ET.Client
         // Event fired when a speaker should be drawn (Unity subscriber handles visuals)
         public event Action<ScriptSpeaker> OnSpeakerDraw;
 
-        private readonly AudioSystem _audio;
-        private readonly FileSystem  _fs;
-
-        public CGameSound(AudioSystem audio, FileSystem fs)
-        {
-            _audio = audio;
-            _fs    = fs;
-        }
+        public CGameSound() { }
 
         // ------------------------------------------------------------------ //
         // Initialization — CG_SoundInit
@@ -138,7 +132,7 @@ namespace ET.Client
         // CG_SoundLoadSoundFiles — reads sound/scripts/filelist.txt, then each .sounds file
         private void LoadSoundFiles()
         {
-            string fileList = _fs.ReadAllText("sound/scripts/filelist.txt");
+            string fileList = FileSystem.ReadAllText("sound/scripts/filelist.txt");
             if (string.IsNullOrEmpty(fileList))
             {
                 Debug.LogWarning("CGameSound: no sound/scripts/filelist.txt found");
@@ -156,7 +150,7 @@ namespace ET.Client
             foreach (string sf in files)
             {
                 string path = $"sound/scripts/{sf}";
-                string text = _fs.ReadAllText(path);
+                string text = FileSystem.ReadAllText(path);
                 if (!string.IsNullOrEmpty(text))
                     ParseSoundsFile(path, text);
             }
@@ -271,7 +265,7 @@ namespace ET.Client
                     foreach (var sf in g.Sounds)
                     {
                         if (sf.Clip == null)
-                            sf.Clip = _audio.RegisterSoundClip(sf.Filename);
+                            sf.Clip = AudioSystem.RegisterSoundClip(sf.Filename);
                     }
                 }
             }
@@ -405,17 +399,17 @@ namespace ET.Client
             if (sf.Clip != null)
             {
                 if (origin.HasValue)
-                    _audio.StartSound(origin.Value, entityNum, AudioSystem.SoundChannel.Auto,
+                    AudioSystem.StartSound(origin.Value, entityNum, SoundChannel.Auto,
                         sf.Clip, script.Volume);
                 else
-                    _audio.StartLocalSound(sf.Clip, script.Volume);
+                    AudioSystem.StartLocalSound(sf.Clip, script.Volume);
 
                 return (int)(sf.Clip.length * 1000);
             }
 
             if (script.Streaming && !string.IsNullOrEmpty(sf.Filename))
             {
-                _audio.StartBackgroundTrack(sf.Filename, sf.Filename);
+                AudioSystem.S_StartBackgroundTrack(sf.Filename, sf.Filename);
                 return 5000;  // approximate streaming duration
             }
 

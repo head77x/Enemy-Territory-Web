@@ -30,6 +30,14 @@ namespace ET.Server
         Spectator = 3,
     }
 
+    public class WeaponStat
+    {
+        public int Hits;
+        public int Atts;
+        public int Kills;
+        public int Deaths;
+    }
+
     public class GEntity
     {
         public EntityState  S           = new EntityState();
@@ -65,6 +73,7 @@ namespace ET.Server
         public bool         PhysicsObject;
         public float        PhysicsBounce;
         public int          Flags;
+        public EntityScript Script;
     }
 
     public class GClient
@@ -105,17 +114,37 @@ namespace ET.Server
         public int    Score;
         public int    Deaths;
         public int    Kills;
+        public int    CmdDebounce;
+        public bool   Ready;
+        public string NetName => Name;
+        public int    CharacterIndex;
+        public object Character;
+        public GEntity WayPoint;
+        public int    LastWaypointSetTime;
     }
 
     public class ClientSession
     {
-        public int SessionTeam;
-        public int Spectator;
-        public int SpectatorNum;
-        public int SpectatorClient;
-        public int Wins;
-        public int Losses;
-        public int TelePorted;
+        public int   SessionTeam;
+        public int   Spectator;
+        public int   SpectatorNum;
+        public int   SpectatorClient;
+        public int   Wins;
+        public int   Losses;
+        public int   TelePorted;
+        public int   SpectatorState;
+        public int   SpectatorTeam;
+        public int   Referee;
+        public int   SpecInvite;
+        public int   PlayerType;
+        public WeaponStat[] WeaponStats;
+
+        public ClientSession()
+        {
+            WeaponStats = new WeaponStat[(int)WeaponStatIndex.MAX];
+            for (int i = 0; i < WeaponStats.Length; i++)
+                WeaponStats[i] = new WeaponStat();
+        }
     }
 
     public class LevelLocals
@@ -147,6 +176,10 @@ namespace ET.Server
         public int       NumVotingClients;
         public int       SuddenDeathBegin;
         public float     FrameStartTime;
+        public int       MatchPause;
+        public int       NumConnectedClients;
+        public int[]     SortedClients = new int[GameConst.MAX_CLIENTS];
+        public int       NumPlayingClients;
     }
 
     public static class ServerGameLogic
@@ -489,7 +522,7 @@ namespace ET.Server
             bool attackDown = (cmd.Buttons & Button.Attack) != 0;
             if (attackDown && ps.PmType == GameConst.PM_NORMAL)
             {
-                WeaponSystem.FireWeapon(ps.ClientNum, ps, cmd);
+                WeaponSystem.FireWeaponFromCmd(ps.ClientNum, ps, cmd);
                 client.FireHeld = Level.Time;
             }
 
@@ -1026,7 +1059,7 @@ namespace ET.Server
         {
             G_SpawnInt("dmg", "5", out ent.Damage);
 
-            ent.Touch = (self, other, _activator) =>
+            ent.Touch = (self, other) =>
             {
                 if (other == null || other.Health <= 0) return;
                 WeaponSystem.G_Damage(other.EntityNum, self.EntityNum,
@@ -1142,6 +1175,41 @@ namespace ET.Server
         {
             if (clientNum < 0 || clientNum >= MAX_CLIENTS) return "";
             return ServerMain.Svs.Clients[clientNum]?.UserInfo ?? "";
+        }
+
+        public static void ClientPrint(GEntity ent, string msg)
+        {
+            if (ent == null) return;
+            SendServerCommand(ent.EntityNum, msg);
+        }
+
+        public static void AllPrint(string msg)
+        {
+            for (int i = 0; i < Level.MaxClients; i++)
+            {
+                var e = Entities[i];
+                if (e != null && e.InUse && e.Client != null)
+                    SendServerCommand(i, msg);
+            }
+        }
+
+        public static string GetConfigstring(int index)
+        {
+            return ServerMain.SV_GetConfigstring(index);
+        }
+
+        public static void SendServerCommand(int clientNum, string cmd)
+        {
+            if (clientNum < 0 || clientNum >= MAX_CLIENTS) return;
+            var cl = ServerMain.Svs.Clients[clientNum];
+            if (cl != null)
+                ServerMain.SV_AddServerCommand(cl, cmd);
+        }
+
+        public static int G_ModelIndex(string model)
+        {
+            if (string.IsNullOrEmpty(model)) return 0;
+            return ServerMain.SV_ModelIndex(model);
         }
     }
 }

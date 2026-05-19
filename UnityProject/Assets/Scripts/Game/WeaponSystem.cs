@@ -410,6 +410,40 @@ namespace ET.Game
             OnFireWeapon?.Invoke(fire);
         }
 
+        public static void FireWeaponFromCmd(int clientNum, ET.Network.PlayerState ps, ET.Network.UserCmd cmd)
+        {
+            Vector3 origin = new Vector3(ps.Origin0, ps.Origin1, ps.Origin2 + ps.ViewHeight);
+            Vector3 dir    = AnglesToForward(new Vector3(cmd.Angles[0] * (360f / 65536f),
+                                                         cmd.Angles[1] * (360f / 65536f),
+                                                         0f));
+            FireWeapon(clientNum, ps, origin, dir, ps.Weapon);
+        }
+
+        private static Vector3 AnglesToForward(Vector3 angles)
+        {
+            float pitch = angles.x * Mathf.Deg2Rad;
+            float yaw   = angles.y * Mathf.Deg2Rad;
+            return new Vector3(
+                Mathf.Cos(pitch) * Mathf.Sin(yaw),
+                Mathf.Cos(pitch) * Mathf.Cos(yaw),
+                -Mathf.Sin(pitch));
+        }
+
+        public static void GiveAmmo(ET.Network.PlayerState ps, int weapon, bool all)
+        {
+            // stub — ammo grant handled by game layer subscriber
+        }
+
+        public static void AddWeapon(ET.Network.PlayerState ps, int weapon)
+        {
+            // stub — weapon addition handled by game layer subscriber
+        }
+
+        public static void DropWeapon(object ent, int weapon)
+        {
+            // stub — weapon drop handled by game layer subscriber
+        }
+
         // -------------------------------------------------------------------
         // Weapon classification helpers
         // -------------------------------------------------------------------

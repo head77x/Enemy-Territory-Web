@@ -96,6 +96,13 @@ namespace ET.Game
         public const int EF_BREATH          = EF_SPINNING;   // hijacks EF_SPINNING on character entities
 
         // -------------------------------------------------------
+        // Entity flags (FL_*) — server-side per-entity flags
+        // -------------------------------------------------------
+        public const int FL_GODMODE             = 0x00000010;
+        public const int FL_NOCLIP              = 0x00000020;
+        public const int FL_NOTARGET            = 0x00000040;
+
+        // -------------------------------------------------------
         // Stats indices (playerState_t.Stats[])
         // -------------------------------------------------------
         public const int STAT_HEALTH           = 0;

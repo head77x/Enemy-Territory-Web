@@ -190,7 +190,8 @@ namespace ET.Server
                 return true;
             }
 
-            var def = GameClasses.BG_ParseCharacterFile(characterFile);
+            string fileText = ET.Core.FileSystem.ReadAllText(characterFile) ?? "";
+            var def = GameCharacters.BG_ParseCharacterFile(characterFile, fileText);
             if (def == null)
             {
                 Debug.LogWarning($"G_RegisterCharacter: parse failed for {characterFile}");
@@ -226,7 +227,7 @@ namespace ET.Server
             {
                 for (int cls = 0; cls < 5; cls++)
                 {
-                    var classInfo = GameClasses.GetPlayerClassInfo((PlayerClass)cls);
+                    var classInfo = GameClasses.BG_ClassInfoForClass((PlayerClass)cls);
                     if (classInfo == null) continue;
 
                     string file = classInfo.CharacterFile;
@@ -280,11 +281,12 @@ namespace ET.Server
         {
             int team = client.Sess.SessionTeam;
             int cls  = client.Sess.PlayerType;
-            var classInfo = GameClasses.GetPlayerClassInfo((PlayerClass)cls);
+            var classInfo = GameClasses.BG_ClassInfoForClass((PlayerClass)cls);
             if (classInfo == null) return;
 
+            var persChar = client.Pers.Character as ServerCharacter;
             if (client.Pers.CharacterIndex == -1 &&
-                client.Pers.Character?.CharacterFile == classInfo.CharacterFile)
+                persChar?.CharacterFile == classInfo.CharacterFile)
                 return;
 
             var ch = new ServerCharacter { CharacterFile = classInfo.CharacterFile };

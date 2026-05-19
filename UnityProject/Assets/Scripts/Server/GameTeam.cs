@@ -15,10 +15,26 @@ namespace ET.Server
     // =========================================================================
     // GameTeam — g_team.c
     // =========================================================================
+    public class TeamInfoData
+    {
+        public bool TeamLock;
+        public int  Timeouts = 3;
+        public bool SpecLock;
+    }
+
     public static class GameTeam
     {
         public const string AXIS_FLAG_CLASSNAME   = "team_CTF_redflag";
         public const string ALLIES_FLAG_CLASSNAME = "team_CTF_blueflag";
+
+        // Indexed by team number (0=Free,1=Axis,2=Allies,3=Spec)
+        public static readonly TeamInfoData[] TeamInfo = new TeamInfoData[4]
+        {
+            new TeamInfoData(),
+            new TeamInfoData(),
+            new TeamInfoData(),
+            new TeamInfoData(),
+        };
 
         public static event Action<int, int>    OnTeamSet;
         public static event Action<int, int>    OnTeamBalance;
@@ -191,7 +207,7 @@ namespace ET.Server
             return candidates[idx];
         }
 
-        private static string TeamName(int team)
+        public static string TeamName(int team)
         {
             return team switch
             {
@@ -554,6 +570,28 @@ namespace ET.Server
         {
             if (ent?.Client == null) return;
             G_RemoveReferee(ent);
+        }
+
+        public static void RefPause(GEntity ent, bool fPause)
+        {
+            var level = ServerGameLogic.Level;
+            if (fPause)
+            {
+                level.MatchPause = 255;
+                AudioSystem.PlayGlobalSound("sound/misc/referee.wav");
+                GameMatch.G_Broadcast("^3Match is ^1PAUSED^3! (Referee)");
+            }
+            else
+            {
+                level.MatchPause = -1; // PAUSE_UNPAUSING
+                GameMatch.G_Broadcast("^3Match is ^5UNPAUSED^3 ... resuming in 10 seconds!");
+                AudioSystem.PlayGlobalSound("sound/osp/prepare.wav");
+            }
+        }
+
+        public static void MakeReferee(GEntity ent)
+        {
+            G_MakeReferee(ent);
         }
 
         public static void G_RefereeStatus(GEntity ent)

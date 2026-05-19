@@ -122,7 +122,7 @@ namespace ET.Server
             // enforces time-based match termination.
             if (Level.GameState != ServerGameLogic.GS_PLAYING) return;
 
-            int limit = _cvTimelimit != null ? (int)_cvTimelimit.Value * 60000 : 0;
+            int limit = _cvTimelimit != null ? _cvTimelimit.IntValue * 60000 : 0;
             if (limit > 0 && Level.Time - Level.StartTime >= limit)
                 G_MatchOver();
         }
@@ -172,6 +172,56 @@ namespace ET.Server
 
             G_SendMatchInfo();
             OnTeamScoreChanged?.Invoke(team, score);
+        }
+
+        public static void PrintMatchInfo(GEntity ent)
+        {
+            if (ent == null) return;
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"^3Map:^7 {Level.MapName}");
+            sb.AppendLine($"^3Scores:^7 Axis {Level.TeamScores0} - Allies {Level.TeamScores1}");
+            sb.AppendLine($"^3Time:^7 {Level.Time / 1000}s elapsed");
+            ServerGameLogic.ClientPrint(ent, $"print \"{sb}\"");
+        }
+
+        public static void MakeReady(GEntity ent)
+        {
+            if (ent?.Client == null) return;
+            ent.Client.Pers.Ready = true;
+        }
+
+        public static void MakeUnready(GEntity ent)
+        {
+            if (ent?.Client == null) return;
+            ent.Client.Pers.Ready = false;
+        }
+
+        public static void CheckReadyMatchState()
+        {
+            if (Level.GameState == ServerGameLogic.GS_PLAYING ||
+                Level.GameState == ServerGameLogic.GS_INTERMISSION) return;
+
+            int maxClients = Level.MaxClients;
+            int readyCount = 0;
+            int totalCount = 0;
+
+            for (int i = 0; i < maxClients; i++)
+            {
+                var ent = ServerGameLogic.Entities[i];
+                if (ent == null || !ent.InUse || ent.Client == null) continue;
+                int t = ent.Client.Sess.SessionTeam;
+                if (t == DamageSystem.TEAM_AXIS || t == DamageSystem.TEAM_ALLIES)
+                {
+                    totalCount++;
+                    if (ent.Client.Pers.Ready) readyCount++;
+                }
+            }
+
+            if (totalCount > 0 && readyCount == totalCount)
+            {
+                Level.GameState = ServerGameLogic.GS_WARMUP_COUNTDOWN;
+                G_Broadcast("^3All players ready! Match starting...");
+            }
         }
 
         private static LevelLocals Level => ServerGameLogic.Level;
@@ -407,6 +457,21 @@ namespace ET.Server
             Array.Clear(stats.SkillPoints, 0, stats.SkillPoints.Length);
             Array.Clear(stats.SkillLevel,  0, stats.SkillLevel.Length);
             ent.Client.XP = 0;
+        }
+
+        public static string CreateStats(GEntity ent)
+        {
+            if (ent?.Client == null) return "";
+            var stats = GetStats(ent.Client);
+            return $"{ent.EntityNum} {stats.Kills} {stats.Deaths} {stats.XP}";
+        }
+
+        public static void PrintStats(GEntity ent, int wIdx)
+        {
+            if (ent?.Client == null) return;
+            var stats = GetStats(ent.Client);
+            string msg = $"^3Stats for {ent.Client.Pers.Name}:^7 Kills={stats.Kills} Deaths={stats.Deaths} XP={stats.XP}";
+            ServerGameLogic.ClientPrint(ent, $"print \"{msg}\n\"");
         }
 
         private static readonly Dictionary<GClient, PlayerStats> _statsCache =

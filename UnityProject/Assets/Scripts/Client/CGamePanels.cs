@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using ET.Core;
 using ET.Game;
 
 namespace ET.Client
@@ -162,16 +163,14 @@ namespace ET.Client
         public event Action<CampaignInfo> OnCampaignLoaded;
         public event Action<ArenaInfo>    OnArenaLoaded;
 
-        private readonly FileSystem _fs;
-
-        public CGameMissionBriefing(FileSystem fs) => _fs = fs;
+        public CGameMissionBriefing() { }
 
         // CG_LocateCampaign — scans scripts/*.campaign for currentCampaign short name
         public void LocateCampaign(string currentCampaignShortName)
         {
             if (string.IsNullOrEmpty(currentCampaignShortName)) return;
 
-            string[] files = _fs.GetFileList("scripts", ".campaign");
+            string[] files = FileSystem.FS_GetFileList("scripts", ".campaign");
             foreach (string f in files)
             {
                 string path = "scripts/" + f;
@@ -224,7 +223,7 @@ namespace ET.Client
         // CG_FindCampaignInFile — brace-depth block parser for .campaign files
         private CampaignInfo ParseCampaignFile(string path, string shortName)
         {
-            string text = _fs.ReadAllText(path);
+            string text = FileSystem.ReadAllText(path);
             if (string.IsNullOrEmpty(text)) return null;
 
             var tokens = Tokenize(text);
@@ -306,7 +305,7 @@ namespace ET.Client
         // CG_FindArenaInfo — brace-depth block parser for .arena files
         private ArenaInfo ParseArenaFile(string path, string mapName)
         {
-            string text = _fs.ReadAllText(path);
+            string text = FileSystem.ReadAllText(path);
             if (string.IsNullOrEmpty(text)) return null;
 
             var tokens = Tokenize(text);

@@ -69,6 +69,8 @@ namespace ET.Game
         public string HeadSkinPath;
         public string AnimScriptPath;
         public float  MaxChestFlexion;
+        public string AnimationGroup;
+        public string AnimationScript;
     }
 
     public class CampaignInfo

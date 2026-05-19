@@ -13,6 +13,8 @@ namespace ET.Game
     /// (snd_mix.c, snd_dma.c) with Unity's AudioSource/AudioClip system.
     /// All public methods mirror the S_* interface from snd_main.c.
     /// </summary>
+    public enum SoundChannel { Auto = 0, Local = 1, Announcer = 2 }
+
     public static class AudioSystem
     {
         // ----------------------------------------------------------------
@@ -180,6 +182,19 @@ namespace ET.Game
             int sfx = S_RegisterSound(name, false);
             if (sfx > 0) S_StartLocalSound(sfx, 0);
         }
+
+        public static void S_StartSoundAtOrigin(Vector3 origin, string soundPath)
+        {
+            int sfx = S_RegisterSound(soundPath, false);
+            if (sfx > 0) S_StartSound(origin, 0, 0, sfx);
+        }
+
+        public static AudioClip RegisterSoundClip(string name) { return null; }
+
+        public static void StartSound(Vector3 origin, int entityNum, SoundChannel channel,
+            AudioClip clip, float volume) { }
+
+        public static void StartLocalSound(AudioClip clip, float volume) { }
 
         // ----------------------------------------------------------------
         // S_StartBackgroundTrack — start looping background music

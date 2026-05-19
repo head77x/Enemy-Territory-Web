@@ -492,7 +492,7 @@ namespace ET.Server
             if (def != null && !string.IsNullOrEmpty(def.DestroyedModel))
             {
                 // Switch to destroyed model via entity state.
-                ent.S.ModelIndex2 = (short)NetworkManager.RegisterModel(def.DestroyedModel);
+                ent.S.ModelIndex2 = (short)ServerGameLogic.G_ModelIndex(def.DestroyedModel);
             }
 
             OnPropDestroyed?.Invoke(ent.EntityNum, ent.ClassName, destroyerTeam);
@@ -514,7 +514,7 @@ namespace ET.Server
 
             var def = GetPropDef(ent);
             if (def != null && !string.IsNullOrEmpty(def.BuiltModel))
-                ent.S.ModelIndex2 = (short)NetworkManager.RegisterModel(def.BuiltModel);
+                ent.S.ModelIndex2 = (short)ServerGameLogic.G_ModelIndex(def.BuiltModel);
         }
 
         // ------------------------------------------------------------------

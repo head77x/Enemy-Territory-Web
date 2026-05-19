@@ -390,15 +390,15 @@ namespace ET.Client
 
             return new HudData
             {
-                Health      = ps.Stats[(int)StatIndex.Health],
-                MaxHealth   = ps.Stats[(int)StatIndex.MaxHealth],
+                Health      = ps.Stats[GameConst.STAT_HEALTH],
+                MaxHealth   = ps.Stats[GameConst.STAT_HEALTH],   // no separate max-health stat; caller clamps
                 Ammo        = ammo,
                 ClipAmmo    = clip,
                 MaxAmmo     = ammo,       // caller resolves max from weapon table
                 Stamina     = Mathf.Clamp01(1f - ps.SprintExertTime / 20000f),
                 Weapon      = weapon,
                 Team        = ps.TeamNum,
-                Score       = ps.Persistant[(int)PersistIndex.Score],
+                Score       = ps.Persistant[GameConst.PERS_SCORE],
                 IsCrouching = (ps.PmFlags & GameConst.PMF_DUCKED) != 0,
                 IsZoomed    = IsZoomed,
                 IsOnGround  = ps.GroundEntityNum != GameConst.ENTITYNUM_NONE,
@@ -535,23 +535,5 @@ namespace ET.Client
         private static Vector3 ETAnglesToUnity(Vector3 etAngles) =>
             new Vector3(-etAngles.x, -etAngles.y, etAngles.z);
 
-        // -----------------------------------------------------------------------
-        // Internal stat/persist index helpers
-        // Mirrors STAT_* and PERS_* from bg_public.h.
-        // -----------------------------------------------------------------------
-
-        private enum StatIndex
-        {
-            Health      = 0,
-            MaxHealth   = 3,
-            WeaponClips = 4,
-        }
-
-        private enum PersistIndex
-        {
-            Score       = 0,
-            Hits        = 1,
-            Rank        = 2,
-        }
     }
 }

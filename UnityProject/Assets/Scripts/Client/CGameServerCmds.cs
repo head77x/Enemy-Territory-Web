@@ -278,7 +278,7 @@ namespace ET.Client
         {
             float yaw       = yawByte   * (360f / 255f);
             float intensity = Mathf.Clamp01(damage / 200f);
-            OnDamageIndicator?.Invoke(yaw, intensity);
+            OnDamageIndicator?.Invoke((int)yaw, intensity);
         }
 
         // CG_Respawn
@@ -304,7 +304,7 @@ namespace ET.Client
                 int ev    = ps.Events[evIdx];
                 // Forward to the entity event system using the local client entity.
                 Vector3 origin = new Vector3(-ps.Origin1, ps.Origin2, ps.Origin0); // ET→Unity
-                CGameEntities.OnEntityEvent?.Invoke(ps.ClientNum, ev, origin);
+                CGameEntities.RaiseEntityEvent(ps.ClientNum, ev, origin);
             }
         }
     }

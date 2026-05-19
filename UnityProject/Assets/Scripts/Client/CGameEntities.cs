@@ -55,6 +55,16 @@ namespace ET.Client
         }
 
         // -----------------------------------------------------------------------
+        // Event raisers — needed because C# events can only be invoked from
+        // within the declaring class.
+        // -----------------------------------------------------------------------
+        public static void RaiseEntityEvent(int entityNum, int ev, Vector3 origin)
+            => OnEntityEvent?.Invoke(entityNum, ev, origin);
+
+        public static void RaiseExplosion(int entityNum, Vector3 origin, bool large)
+            => OnExplosion?.Invoke(entityNum, origin, large);
+
+        // -----------------------------------------------------------------------
         // Helpers
         // -----------------------------------------------------------------------
 

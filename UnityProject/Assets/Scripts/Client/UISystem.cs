@@ -112,6 +112,8 @@ namespace ET.Client
             OnMenuDraw?.Invoke(_currentMenu);
         }
 
+        public static void RaiseMenuDraw(UIMenu menu) => OnMenuDraw?.Invoke(menu);
+
         public static void UI_KeyEvent(int key, bool down)
         {
             if (!down || _currentMenu == null)
@@ -501,7 +503,7 @@ namespace ET.Client
         public static void UI_DrawHandlePic(float x, float y, float w, float h, string texturePath)
         {
             UI_AdjustFrom640(ref x, ref y, ref w, ref h);
-            UISystem.OnMenuDraw?.Invoke(null); // subscribers handle actual rendering
+            UISystem.RaiseMenuDraw(null); // subscribers handle actual rendering
         }
 
         public static void UI_AdjustFrom640(ref float x, ref float y, ref float w, ref float h)

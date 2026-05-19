@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Video;
+using ET.Core;
 using ET.Game;
 
 namespace ET.Client

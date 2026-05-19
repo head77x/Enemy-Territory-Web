@@ -172,7 +172,7 @@ namespace ET.Server
         // SV_KillServer_f — shuts down the server
         private static void Cmd_KillServer(string[] args)
         {
-            ServerInit.SV_Shutdown("Server killed by operator.");
+            ServerMain.SV_Shutdown("Server killed by operator.");
         }
 
         // SV_Ban_f — IP ban (stored in cvar list, cleared on restart)
@@ -305,7 +305,7 @@ namespace ET.Server
         // SV_DECODE_START = 12: skip serverId(4) + messageAck(4) + reliableAck(4)
         private const int SV_DECODE_START = 12;
 
-        public static void Decode(ref byte[] data, int length, int challenge,
+        public static void Decode(byte[] data, int length, int challenge,
                                   int incomingSequence, string commandString)
         {
             if (length < SV_DECODE_START) return;
@@ -341,7 +341,7 @@ namespace ET.Server
             byte[] copy = new byte[length];
             Array.Copy(data, copy, length);
             Encode(ref copy, length, challenge, chan.OutgoingSequence, lastCmd);
-            chan.Transmit(copy, length);
+            chan.Transmit(length, copy);
         }
 
         // SV_Netchan_Process — decodes incoming then passes to NetChannel
@@ -349,7 +349,7 @@ namespace ET.Server
                                    NetMessage msg)
         {
             if (!chan.Process(msg)) return false;
-            Decode(ref msg.Data, msg.CurSize, challenge, chan.IncomingSequence, lastCmd);
+            Decode(msg.Data, msg.CurSize, challenge, chan.IncomingSequence, lastCmd);
             return true;
         }
     }

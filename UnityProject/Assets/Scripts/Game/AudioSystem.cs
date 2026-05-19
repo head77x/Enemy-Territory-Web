@@ -177,6 +177,12 @@ namespace ET.Game
             S_StartSound(null, 0, entchannel, sfxHandle);
         }
 
+        public static void S_StartLocalSound(string soundPath, int entchannel)
+        {
+            int sfx = S_RegisterSound(soundPath, false);
+            if (sfx > 0) S_StartSound(null, 0, entchannel, sfx);
+        }
+
         public static void PlayGlobalSound(string name)
         {
             int sfx = S_RegisterSound(name, false);

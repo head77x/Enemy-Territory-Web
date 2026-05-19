@@ -392,7 +392,7 @@ namespace ET.Client
             var sf  = oldest.Sounds[idx];
 
             if (sf.Clip == null)
-                sf.Clip = _audio.RegisterSoundClip(sf.Filename);
+                sf.Clip = AudioSystem.RegisterSoundClip(sf.Filename);
 
             oldest.LastPlayed = (int)(Time.time * 1000);
 

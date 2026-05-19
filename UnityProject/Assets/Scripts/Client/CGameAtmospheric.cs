@@ -299,7 +299,6 @@ namespace ET.Client
                     startColor  = Color.Lerp(p.StartColor, p.EndColor, t),
                     startSize   = Mathf.Lerp(p.StartSize,  p.EndSize,  t),
                     startLifetime = Time.deltaTime + 0.001f,  // single-frame immediate particle
-                    remainingLifetime = Time.deltaTime + 0.001f,
                     velocity    = ETToUnity(p.Velocity),
                 };
                 _particleSystem.Emit(ep, 1);

@@ -51,7 +51,9 @@ namespace ET.Server
 
             wp.S.EType      = GameConstants.ET_WAYPOINT;
             wp.S.Pos.TrType = GameConstants.TR_STATIONARY;
-            wp.S.Pos.TrBase = loc;
+            wp.S.Pos.TrBase0 = loc.x;
+            wp.S.Pos.TrBase1 = loc.y;
+            wp.S.Pos.TrBase2 = loc.z;
             wp.S.Frame      = (int)type;
             wp.S.ClientNum  = owner.EntityNum;
             wp.S.OtherEntityNum = owner.EntityNum;

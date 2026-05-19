@@ -46,6 +46,7 @@ namespace ET.Game
         public string      Name;
         public string      ModelName;
         public string      HeadModelName;
+        public string      CharacterFile;
         public float       MoveScale;
         public int[]       StartWeapons;
         public int         StartAmmo;

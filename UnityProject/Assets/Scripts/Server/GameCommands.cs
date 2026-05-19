@@ -212,14 +212,14 @@ namespace ET.Server
             {
                 case "health":
                     ent.Health = ent.MaxHealth;
-                    ent.Client.PS.Stats[GameConst.STAT_HEALTH] = ent.MaxHealth;
+                    ent.Client.PS.Stats[GameConst.STAT_HEALTH] = (short)ent.MaxHealth;
                     break;
                 case "ammo":
                     WeaponSystem.GiveAmmo(ent.Client.PS, -1, true);
                     break;
                 case "all":
                     ent.Health = ent.MaxHealth;
-                    ent.Client.PS.Stats[GameConst.STAT_HEALTH] = ent.MaxHealth;
+                    ent.Client.PS.Stats[GameConst.STAT_HEALTH] = (short)ent.MaxHealth;
                     WeaponSystem.GiveAmmo(ent.Client.PS, -1, true);
                     break;
                 default:

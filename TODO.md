@@ -8,29 +8,29 @@
 ## 완료된 작업
 
 ### Layer 1 — 핵심 기반 모듈 ✅
-커밋: `[Layer 1] Add Unity C# core foundation modules`
 
 | C# 파일 | 원본 C 파일 | 설명 |
 |---------|-----------|------|
-| `Core/ETMath.cs` | `src/game/q_math.c` | 벡터/각도/평면/경계 수학, ByteDirs(162), ColorTable(32) |
-| `Core/ETShared.cs` | `src/game/q_shared.c` | 문자열 유틸, Info 스트링, 파싱 세션, 비트 배열 |
-| `Core/Huffman.cs` | `src/qcommon/huffman.c` | 적응형 허프만 압축 (Sayood 알고리즘) |
-| `Core/MD4.cs` | `src/qcommon/md4.c` | MD4 해시 — 맵/PK3 무결성 검증, challenge-response |
+| `Core/ETMath.cs` | `q_math.c` | 벡터/각도/평면/경계 수학, ByteDirs(162), ColorTable(32) |
+| `Core/ETShared.cs` | `q_shared.c` | 문자열 유틸, Info 스트링, 파싱 세션, 비트 배열 |
+| `Core/Huffman.cs` | `huffman.c` | 적응형 허프만 압축 (Sayood 알고리즘) |
+| `Core/MD4.cs` | `md4.c` | MD4 해시 — 맵/PK3 무결성 검증, challenge-response |
+| `Core/CmdSystem.cs` | `cmd.c` | 콘솔 명령 레지스트리 + 디퍼드 버퍼 (Cbuf) |
+| `Core/FileSystem.cs` | `files.c` | 가상 파일시스템 — PK3(ZIP) + 루즈 파일 레이어드 검색 |
 
 ### Layer 2 — 네트워크 레이어 ✅
-커밋: `[Layer 2] Add Unity C# network layer`
 
 | C# 파일 | 원본 C 파일 | 설명 |
 |---------|-----------|------|
-| `Network/NetField.cs` | `src/qcommon/msg.c` | 제네릭 `NetField<T>` — C의 오프셋 해킹을 람다로 대체 |
-| `Network/NetAddress.cs` | `src/qcommon/qcommon.h` | `netadr_t` + IPEndPoint 변환 |
-| `Network/UserCmd.cs` | `src/game/q_shared.h` | `usercmd_t` + Button/WButton 상수 + DoubleTap 열거형 |
-| `Network/EntityState.cs` | `src/game/q_shared.h` + msg.c | `entityState_t` + `trajectory_t` + NetFields[67] |
-| `Network/PlayerState.cs` | `src/game/q_shared.h` + msg.c | `playerState_t` + NetFields[74] |
-| `Network/NetMessage.cs` | `src/qcommon/msg.c` | 허프만 비트스트림 I/O, 델타 인코딩, OOB 모드 |
-| `Network/NetChannel.cs` | `src/qcommon/net_chan.c` | UDP 채널 — 단편화/시퀀싱/루프백 |
+| `Network/NetField.cs` | `msg.c` | 제네릭 `NetField<T>` — C의 오프셋 해킹을 람다로 대체 |
+| `Network/NetAddress.cs` | `qcommon.h` | `netadr_t` + IPEndPoint 변환 |
+| `Network/UserCmd.cs` | `q_shared.h` | `usercmd_t` + Button/WButton 상수 + DoubleTap 열거형 |
+| `Network/EntityState.cs` | `q_shared.h` + `msg.c` | `entityState_t` + `trajectory_t` + NetFields[67] |
+| `Network/PlayerState.cs` | `q_shared.h` + `msg.c` | `playerState_t` + NetFields[74] |
+| `Network/NetMessage.cs` | `msg.c` | 허프만 비트스트림 I/O, 델타 인코딩, OOB 모드 |
+| `Network/NetChannel.cs` | `net_chan.c` | UDP 채널 — 단편화/시퀀싱/루프백 |
 
-### Layer 3 — 플레이어 물리 + 무기 상태 머신 ✅
+### Layer 3 — 플레이어 물리 + 무기 + 게임 로직 ✅
 
 | C# 파일 | 원본 C 파일 | 설명 |
 |---------|-----------|------|
@@ -43,7 +43,10 @@
 | `Game/SlideMove.cs` | `bg_slidemove.c` | PM_ClipVelocity, PM_SlideMove, PM_StepSlideMove |
 | `Game/PlayerMovement.cs` | `bg_pmove.c` (5,709줄) | 전체 플레이어 물리 + PM_Weapon 완전 포팅 |
 | `Game/CvarSystem.cs` | `cvar.c` | 경량 Cvar 레지스트리 |
-| `Game/GameMisc.cs` | `bg_misc.c` | BG_ 유틸리티 함수 (PlayerStateToEntityState 등) |
+| `Game/GameMisc.cs` | `bg_misc.c` | BG_ 유틸리티 함수 |
+| `Game/WeaponSystem.cs` | `g_weapon.c` | 서버 측 무기 발사, 데미지 디스패치, 50개 무기 테이블 |
+| `Game/DamageSystem.cs` | `g_combat.c` | 데미지 해결, 사망 처리, XP 시스템, 출혈 타이머 |
+| `Game/GameItems.cs` | `g_items.c` | 아이템 픽업, 탄약 보급, 무기 드롭, 아이템 테이블 |
 
 ### Layer 4 — 서버 핵심 ✅
 
@@ -57,78 +60,33 @@
 | `Server/ServerWorld.cs` | `sv_world.c` | AABB 공간 쿼리, swept-AABB trace |
 | `Server/ServerGame.cs` | `sv_game.c` | 게임 VM 브릿지, 서버↔게임 이벤트 |
 
----
+### Layer 5 — 클라이언트 핵심 ✅
 
-## 남은 작업
+| C# 파일 | 원본 C 파일 | 설명 |
+|---------|-----------|------|
+| `Client/ClientTypes.cs` | `client.h` | 연결 상태, 스냅샷 링, 명령 링 타입 |
+| `Client/ClientMain.cs` | `cl_main.c` | CL_Frame, 연결/challenge 관리, 패킷 전송 |
+| `Client/ClientInput.cs` | `cl_input.c` | 입력 수집 + UserCmd 생성 (ANGLE2SHORT) |
+| `Client/ClientParse.cs` | `cl_parse.c` | 스냅샷/게임스테이트/서버 명령 파싱 |
+| `Client/ClientCGame.cs` | `cl_cgame.c` | cgame 인터페이스 — VM_Call → C# 이벤트 |
+| `Client/ClientNetChan.cs` | `cl_net_chan.c` | 클라이언트 측 netchan (단편화 우선순위) |
 
-### 우선순위 기준 레이어
+### Layer 6 — 렌더러 인터페이스 ✅
 
-```
-Layer 5: 클라이언트 핵심   ← 현재 진행 중
-Layer 6: 렌더러 인터페이스 (BSP 임포터)
-Layer 7: 봇 AI
-Layer 8: 통합 / 실행 가능한 데모
-```
+| C# 파일 | 원본 | 설명 |
+|---------|------|------|
+| `Renderer/BspImporter.cs` | `tr_bsp.c` | ET BSP v46 파서 + Unity ScriptedImporter, 패치 테셀레이션 |
+| `Renderer/ShaderParser.cs` | `tr_shader.c` | .shader 파일 파서 → EtShader → Unity Material |
+| `Renderer/Md3Importer.cs` | `tr_mesh.c` | MD3 정적 메시 + BlendShape 애니메이션 |
+| `Renderer/MdsImporter.cs` | `tr_animation.c` | MDS 스켈레탈 메시 + SkinnedMeshRenderer + Avatar |
 
----
+### Layer 7 — 봇 AI ✅
 
-### Layer 5 — 클라이언트 핵심 🔲 (진행 중)
-
-| 대상 C# 파일 | 원본 C 파일 | 설명 |
-|------------|-----------|------|
-| `Client/ClientTypes.cs` | `client.h` | 클라이언트 상태 타입 (in progress) |
-| `Client/ClientMain.cs` | `cl_main.c` | 클라이언트 초기화/루프/연결 관리 |
-| `Client/ClientInput.cs` | `cl_input.c` | 입력 수집 + UserCmd 생성 |
-| `Client/ClientParse.cs` | `cl_parse.c` | 서버 메시지 파싱 (스냅샷, 게임스테이트) |
-| `Client/ClientCGame.cs` | `cl_cgame.c` | cgame 인터페이스 (이벤트 기반 스텁) |
-| `Client/ClientNetChan.cs` | `cl_net_chan.c` | 클라이언트 측 netchan 래퍼 |
-
----
-
-### Layer 6 — 렌더러 인터페이스 (Unity 전환)
-
-원본 OpenGL 렌더러는 Unity URP/HDRP로 완전 대체.
-
-| 대상 | 설명 | Unity 대체 |
-|------|------|-----------|
-| `Renderer/BspImporter.cs` | ET BSP 맵 → Unity Mesh/GameObject | Editor 전용 AssetImporter |
-| `Renderer/Md3Importer.cs` | MD3 모델 임포터 | Editor 전용 |
-| `Renderer/MdsImporter.cs` | MDS 스켈레탈 모델 임포터 | Editor + Animator |
-| `Renderer/ShaderParser.cs` | ET .shader 파일 → Unity Material | Editor 전용 |
-| `Renderer/SkinParser.cs` | .skin 파일 파서 | Runtime |
-
-**BSP 임포터 핵심 작업 (`src/renderer/tr_bsp.c`):**
-- Lump 파싱: 엔티티/셰이더/평면/노드/리프/면/표면
-- SOLID_BMODEL 인라인 모델
-- 패치 곡면 → Unity Mesh (Bezier 테셀레이션)
-- 라이트맵 → Unity Texture2D (RGB 리스케일 필요)
-- 가시성 PVS 데이터 → Occlusion Culling 또는 Unity Portals
-
----
-
-### Layer 7 — 봇 AI
-
-| 대상 C# 파일 | 원본 | 설명 |
-|------------|------|------|
-| `BotAI/BotMain.cs` | `src/botai/`, `src/botlib/` | 봇 프레임 루프 |
-| `BotAI/PathFinding.cs` | AAS 시스템 | Unity NavMesh로 대체 가능 |
-| `BotAI/BotChat.cs` | `src/game/g_bot.c` | 채팅/명령 처리 |
-
-> AAS (Area Awareness System) 포팅은 Unity NavMesh 사용으로 대부분 생략 가능.
-
----
-
-### 미결 기술 항목
-
-| 항목 | 현황 | 해결 방법 |
-|------|------|---------|
-| Cmd 시스템 (cmd.c) | 미작업 | 콘솔 명령 라우터 구현 필요 |
-| 파일 시스템 (files.c) | 미작업 | PK3(ZIP) 로드 → `System.IO.Compression` |
-| 오디오 (snd_*.c) | 미작업 | Unity Audio System으로 완전 대체 |
-| 충돌 감지 (cm_*.c) | 미작업 | BSP 충돌 → Unity PhysX 혼용 |
-| WeaponSystem.cs (g_weapon.c) | 미작업 | 서버 측 무기 데미지 처리 |
-| DamageSystem.cs (g_combat.c) | 미작업 | 서버 측 데미지/죽음 처리 |
-| Animations.cs (bg_animation.c) | 미작업 | Layer 6 애니메이션 스크립트 |
+| C# 파일 | 원본 | 설명 |
+|---------|------|------|
+| `BotAI/BotMain.cs` | `g_bot.c`, `ai_main.c` | 봇 상태 머신, NavMesh 이동, UserCmd 생성 |
+| `BotAI/BotChat.cs` | `ai_chat.c` | 음성 명령 처리, 채팅 응답 테이블 |
+| `BotAI/PathFinding.cs` | `be_aas_*.c` | AAS → Unity NavMesh 브릿지, 경로 계획 API |
 
 ---
 
@@ -137,13 +95,45 @@ Layer 8: 통합 / 실행 가능한 데모
 ```
 전체 원본 C 소스: ~473,000줄 (456 파일)
 ────────────────────────────────────────────
-Layer 1 완료:  ~4,000줄  (q_math.c, q_shared.c, huffman.c, md4.c)
-Layer 2 완료:  ~3,300줄  (msg.c, net_chan.c, netField 타입)
-Layer 3 완료:  ~8,000줄  (bg_pmove.c, bg_slidemove.c, bg_misc.c, cvar.c)
-Layer 4 완료:  ~5,000줄  (sv_main.c, sv_client.c, sv_snapshot.c, sv_game.c, sv_world.c, sv_init.c)
+Layer 1 완료:  ~4,500줄  (q_math, q_shared, huffman, md4, cmd, files)
+Layer 2 완료:  ~3,300줄  (msg, net_chan, netField 타입)
+Layer 3 완료:  ~14,000줄 (bg_pmove, bg_slidemove, bg_misc, cvar, g_weapon, g_combat, g_items)
+Layer 4 완료:  ~5,000줄  (sv_main, sv_client, sv_snapshot, sv_game, sv_world, sv_init)
+Layer 5 완료:  ~2,500줄  (cl_main, cl_input, cl_parse, cl_cgame, cl_net_chan)
+Layer 6 완료:  ~4,000줄  (tr_bsp, tr_shader, tr_mesh, tr_animation)
+Layer 7 완료:  ~2,000줄  (g_bot, ai_main, ai_chat, be_aas_*)
 ────────────────────────────────────────────
-현재까지 포팅: ~20,300줄  (약 4.3%)
-Layer 5 진행: cl_main.c, cl_input.c, cl_parse.c, cl_cgame.c
-렌더러 교체:  Unity로 완전 대체 (tr_*.c 직접 포팅 불필요)
-봇 AI:       Unity NavMesh 부분 대체 가능
+현재까지 포팅: ~35,300줄  (약 7.5%)
+렌더러 교체:   Unity로 완전 대체 (tr_*.c 직접 포팅 불필요 — OpenGL → URP)
+봇 AI:        AAS → Unity NavMesh 대체 완료
+```
+
+---
+
+## 남은 주요 작업
+
+| 항목 | 현황 | 메모 |
+|------|------|------|
+| `bg_animation.c` 포팅 | 미작업 | 애니메이션 스크립트 시스템 (레이어 3b) |
+| `cm_*.c` 충돌 감지 | 미작업 | BSP 충돌 → Unity PhysX 혼용 |
+| 오디오 (`snd_*.c`) | 미작업 | Unity Audio System으로 완전 대체 |
+| 통합 테스트 씬 | 미작업 | MonoBehaviour로 레이어 연결, 기본 플레이 확인 |
+| WeaponSystem → DamageSystem 구독 | 미작업 | `DamageSystem` static 생성자 자동 구독 |
+| MDS 프레임 압축 해제 | 미작업 | `mdsBoneFrameCompressed_t` 5-short 디코더 (TODO 주석) |
+
+---
+
+## Unity 프로젝트 설정 가이드
+
+```
+권장 버전: Unity 6 (6000.0.x LTS) 또는 Unity 2022.3 LTS
+렌더 파이프라인: Universal Render Pipeline (URP)
+API 호환성: .NET Standard 2.1
+```
+
+Assembly definition 체인:
+```
+ET.Core → ET.Network → ET.Game → ET.Server
+                               → ET.Client
+                               → ET.BotAI
 ```

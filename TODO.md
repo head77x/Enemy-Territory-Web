@@ -126,12 +126,21 @@
 |---------|-----------|------|
 | `Client/UISystem.cs` | `ui_main.c`, `ui_shared.c`, `ui_atoms.c`, `ui_players.c`, `ui_gameinfo.c` | Stack 메뉴 내비게이션, .menu 스크립트 파서, 서버 브라우저, 아레나 정보 |
 
+### Layer 12 — 나머지 소규모 파일 ✅
+
+| C# 파일 | 원본 C 파일 | 설명 |
+|---------|-----------|------|
+| `Server/GameCommandsExt.cs` | `g_cmds_ext.c` | OSP 확장 명령 (lock/unlock/pause/ready/topshots/bottomshots/specinvite/speclock/players 등 25개) + 무기 정확도 랭킹 |
+| `Server/GameCharacterConfig.cs` | `g_character.c`, `g_config.c`, `g_mem.c`, `g_save.c` | 캐릭터 등록/업데이트, comp/pub 서버 프리셋 cvar 테이블, GameMemory 스텁 (g_save는 #ifdef SAVEGAME_SUPPORT로 원본 미사용) |
+| `Client/CGamePanels.cs` | `cg_panelhandling.c`, `cg_missionbriefing.c` | PanelButton 시스템, .campaign/.arena 파서, CampaignInfo/ArenaInfo, 미션 브리핑 이벤트 |
+| `Client/CGameSound.cs` | `cg_sound.c` | cgame 사운드 스크립트 시스템 (4096 스크립트 / 8192 사운드), 해시 테이블 조회, 버퍼드 큐, ScriptSpeaker 풀, AudioSystem 위임 |
+
 ---
 
 ## 변환 진행률
 
 ```
-전체 원본 C 소스: ~473,000줄 (456 파일)       C# 파일: 70개, 33,124줄
+전체 원본 C 소스: ~473,000줄 (456 파일)       C# 파일: 74개, ~37,500줄
 ────────────────────────────────────────────────────────────────────
 Layer 1  완료:  ~4,500줄  (q_math, q_shared, huffman, md4, cmd, files)
 Layer 2  완료:  ~3,300줄  (msg, net_chan, netField 타입)
@@ -158,8 +167,10 @@ Layer 10 완료:  ~6,400줄  (cg_main, cg_snapshot, cg_predict, cg_ents, cg_play
                             cg_info, cg_window, cg_newDraw, cg_drawtools,
                             cg_statsranksmedals)
 Layer 11 완료:  ~700줄   (ui_main, ui_shared, ui_atoms, ui_players, ui_gameinfo)
+Layer 12 완료:  ~4,400줄  (g_cmds_ext, g_character, g_config, g_mem, g_save(stub),
+                            cg_panelhandling, cg_missionbriefing, cg_sound)
 ────────────────────────────────────────────────────────────────────
-현재까지 포팅: ~50,500줄  (약 10.7%)
+현재까지 포팅: ~55,000줄  (약 11.6%)
 렌더러 교체:   Unity URP로 완전 대체 (OpenGL → URP, tr_*.c 불필요)
 봇 AI:        AAS → Unity NavMesh 대체 완료
 충돌 감지:    cm_*.c → Unity PhysX 대체 완료
@@ -168,16 +179,10 @@ Layer 11 완료:  ~700줄   (ui_main, ui_shared, ui_atoms, ui_players, ui_gamein
 
 ---
 
-## 남은 작업 (소규모)
+## 남은 작업
 
 | 항목 | 원본 | 메모 |
 |------|------|------|
-| `g_cmds_ext.c` | ~812줄 | 확장 클라이언트 명령 (GameCommands.cs에 통합 가능) |
-| `g_character.c` / `g_config.c` | ~300줄 | 서버측 캐릭터/설정 (스텁 수준) |
-| `g_save.c` / `g_mem.c` | ~200줄 | 저장/메모리 (Unity PlayerPrefs로 대체) |
-| `cg_missionbriefing.c` | ~401줄 | 미션 브리핑 UI (CGameUI에 통합 가능) |
-| `cg_panelhandling.c` | ~309줄 | 패널 핸들러 (CGameWindows에 통합 가능) |
-| `cg_sound.c` | ~2,079줄 | cgame 사운드 (AudioSystem에 대부분 통합됨) |
 | `cg_polybus.c` | ~93줄 | 폴리곤 버스 (렌더러 대체로 불필요) |
 | `ui_syscalls.c` / `cg_syscalls.c` | syscall 브릿지 | Unity에서 직접 호출로 대체 완료 |
 

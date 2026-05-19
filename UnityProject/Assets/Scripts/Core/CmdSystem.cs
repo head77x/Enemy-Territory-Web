@@ -51,10 +51,10 @@ namespace ET.Core
             }
             else
             {
-                // Check CvarSystem before giving up
-                if (args.Length >= 2 && ET.Game.CvarSystem.Find(args[0]) != null)
+                // Fall back to cvar set via injected delegate (avoids ET.Core → ET.Game circular ref)
+                if (args.Length >= 2 && CommonSystem.CvarSetDelegate != null)
                 {
-                    ET.Game.CvarSystem.Set(args[0], args[1]);
+                    CommonSystem.CvarSetDelegate(args[0], args[1]);
                     return;
                 }
                 Debug.LogWarning($"[CmdSystem] Unknown command: {args[0]}");

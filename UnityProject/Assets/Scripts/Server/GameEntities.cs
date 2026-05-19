@@ -390,7 +390,7 @@ namespace ET.Server
         {
             ent.Use = (self, other, activator) =>
             {
-                GameUtils.G_TempEntity(self.Origin, (int)EntityType.Smoker);
+                GameUtils.G_TempEntity(self.Origin, (int)ET.Network.EntityType.Smoker);
             };
         }
 
@@ -566,7 +566,7 @@ namespace ET.Server
                 ps.PmFlags     |= GameConst.PMF_TIME_LAND;
 
                 other.Client.Sess.TelePorted++;
-                GameUtils.G_AddEvent(other, (int)EntityEvent.Teleport, 0);
+                GameUtils.G_AddEvent(other, EntityEventConst.EV_TELEPORT_IN, 0);
             };
         }
 
@@ -785,28 +785,9 @@ namespace ET.Server
         }
     }
 
-    // =========================================================================
-    // EntityEvent / EntityType stubs referenced above
-    // (mirror the values used across the codebase)
-    // =========================================================================
-    internal enum EntityEvent
+    // EV_GENERAL_SOUND value from bg_public.h used for G_AddEvent.
+    internal static class EntityEventConst
     {
-        Teleport  = 52,
-    }
-
-    internal enum EntityType
-    {
-        General       = 0,
-        Player        = 1,
-        Item          = 2,
-        Missile       = 3,
-        Mover         = 4,
-        Speaker       = 5,
-        PortalSurface = 6,
-        PortalCamera  = 7,
-        MG42Mount     = 8,
-        AAGun         = 9,
-        Flak          = 10,
-        Smoker        = 20,
+        public const int EV_TELEPORT_IN = 52;
     }
 }

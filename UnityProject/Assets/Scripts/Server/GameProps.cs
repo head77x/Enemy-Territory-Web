@@ -659,7 +659,12 @@ namespace ET.Server
                 Debug.Log("forceteam: invalid team number");
                 return;
             }
-            var ent = ServerGameLogic.GetEntity(clientNum);
+            if (clientNum < 0 || clientNum >= ServerGameLogic.Entities.Length)
+            {
+                Debug.Log($"forceteam: client {clientNum} out of range");
+                return;
+            }
+            var ent = ServerGameLogic.Entities[clientNum];
             if (ent == null || !ent.InUse)
             {
                 Debug.Log($"forceteam: client {clientNum} not active");
@@ -720,7 +725,7 @@ namespace ET.Server
                 return;
             }
             string cmd = string.Join(" ", args, 2, args.Length - 2);
-            ServerGameLogic.SendServerCommand(clientNum, cmd);
+            ServerGame.SV_GameSendServerCommand(clientNum, cmd);
         }
 
         private static void Cmd_NextMap_f(string[] args)

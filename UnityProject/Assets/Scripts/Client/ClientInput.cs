@@ -53,14 +53,14 @@ namespace ET.Client
             cmd.ServerTime  = serverTime;
 
             // Convert view angles to shorts
-            cmd.Angles0 = AngleToShort(ClientMain.Cl.ViewAngles0);
-            cmd.Angles1 = AngleToShort(ClientMain.Cl.ViewAngles1);
-            cmd.Angles2 = AngleToShort(ClientMain.Cl.ViewAngles2);
+            cmd.Angles[0] = AngleToShort(ClientMain.Cl.ViewAngles0);
+            cmd.Angles[1] = AngleToShort(ClientMain.Cl.ViewAngles1);
+            cmd.Angles[2] = AngleToShort(ClientMain.Cl.ViewAngles2);
 
             // Movement axes clamped to sbyte range
-            cmd.ForwardMove = (sbyte)ETMath.Clamp((int)(forwardAxis * 127f), -128, 127);
-            cmd.RightMove   = (sbyte)ETMath.Clamp((int)(rightAxis   * 127f), -128, 127);
-            cmd.UpMove      = (sbyte)ETMath.Clamp((int)(upAxis      * 127f), -128, 127);
+            cmd.ForwardMove = ETMath.ClampChar((int)(forwardAxis * 127f));
+            cmd.RightMove   = ETMath.ClampChar((int)(rightAxis   * 127f));
+            cmd.UpMove      = ETMath.ClampChar((int)(upAxis      * 127f));
 
             cmd.Buttons = CL_CmdButtons();
             cmd.Weapon  = currentWeapon;

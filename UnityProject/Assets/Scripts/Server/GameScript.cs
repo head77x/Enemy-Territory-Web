@@ -45,27 +45,6 @@ namespace ET.Server
         public string         AccumBuffer;
     }
 
-    // GEntity and LevelLocals minimal stubs — expanded by ServerGameLogic.
-    // These live here so GameScript.cs compiles standalone; ServerGameLogic
-    // subclasses / extends them once it is authored.
-    public class LevelLocals
-    {
-        public int    Time;
-        public string MapName = "unknown";
-    }
-
-    public class GEntity
-    {
-        public int          EntityNum;
-        public string       TargetName;
-        public string       Target;
-        public int          Health;
-        public EntityScript Script;
-        public Vector3      Origin;
-        // Linked list of entities sharing a targetname (used by trigger dispatch)
-        public GEntity      ChainNext;
-    }
-
     public static class GameScript
     {
         private static Dictionary<string, EntityScript> _scripts = new Dictionary<string, EntityScript>(StringComparer.OrdinalIgnoreCase);

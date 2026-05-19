@@ -257,8 +257,8 @@ namespace ET.Server
             if (ent?.Client == null) return;
             if (ent.Health <= 0) return;
             // Self-inflicted death via damage system; MOD_SUICIDE = 33 in ET
-            DamageSystem.G_Damage(ent, null, null, Vector3.zero, ent.Origin,
-                ent.Health + 999, DamageSystem.DAMAGE_NO_PROTECTION, 33);
+            WeaponSystem.G_Damage(ent.EntityNum, GameConst.ENTITYNUM_WORLD,
+                ent.Health + 999, 0, 33);
         }
 
         private static void Cmd_Say_f(GEntity ent, ChatType chatType)

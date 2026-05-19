@@ -32,7 +32,7 @@ namespace ET.Game
         {
             _loaded = false;
             string path = $"maps/{mapName}.tga";
-            byte[] raw = FileSystem.ReadFile(path);
+            byte[] raw = FileSystem.FS_ReadFile(path);
             if (raw == null || raw.Length == 0)
             {
                 Debug.LogWarning($"[BgTraceMap] No tracemap found at {path}");
@@ -107,7 +107,7 @@ namespace ET.Game
         public static void BG_LoadAnimGroups()
         {
             _groups.Clear();
-            byte[] raw = FileSystem.ReadFile("animations/groups.txt");
+            byte[] raw = FileSystem.FS_ReadFile("animations/groups.txt");
             if (raw == null || raw.Length == 0) return;
             BG_ParseAnimGroupFile(System.Text.Encoding.UTF8.GetString(raw));
         }
@@ -118,6 +118,15 @@ namespace ET.Game
                 if (string.Equals(g.Name, name, StringComparison.OrdinalIgnoreCase))
                     return g;
             return null;
+        }
+
+        public static bool RegisterAnimationGroup(string name, BgAnimModelInfo info)
+        {
+            if (info == null) return false;
+            var group = BG_FindAnimGroup(name);
+            if (group == null) return false;
+            info.AnimationGroup = name;
+            return true;
         }
 
         public static void BG_ParseAnimGroupFile(string fileText)
@@ -212,7 +221,7 @@ namespace ET.Game
         public static void BG_LoadSoundScript(string name)
         {
             string path = $"scripts/{name}.sscript";
-            byte[] raw = FileSystem.ReadFile(path);
+            byte[] raw = FileSystem.FS_ReadFile(path);
             if (raw == null || raw.Length == 0)
             {
                 Debug.LogWarning($"[BgSoundScript] Missing {path}");
@@ -347,7 +356,7 @@ namespace ET.Server
         {
             _propDefs.Clear();
             string path = $"maps/{mapName}_props.script";
-            byte[] raw = FileSystem.ReadFile(path);
+            byte[] raw = FileSystem.FS_ReadFile(path);
             if (raw == null || raw.Length == 0)
             {
                 Debug.Log($"[GameProps] No props script at {path}");
@@ -721,6 +730,31 @@ namespace ET.Server
             string current = CvarSystem.GetString("g_mapname");
             Debug.Log($"Restarting map: {current}");
             OnMapChange?.Invoke(current);
+        }
+    }
+}
+
+// ============================================================================
+// ET.Game — BgAnimModelInfo, BgAnimScript (bg_animscript.c stubs)
+// ============================================================================
+namespace ET.Game
+{
+    // Mirrors bg_animmodel.c animModelInfo_t — server-side animation model state.
+    public class BgAnimModelInfo
+    {
+        public string AnimationGroup;
+        public string AnimationScript;
+        public bool   Loaded;
+    }
+
+    // Stub for bg_animscript.c — parses .script files into BgAnimModelInfo.
+    public static class BgAnimScript
+    {
+        public static void ParseAnimScript(BgAnimModelInfo info, string path, string text)
+        {
+            if (info == null || string.IsNullOrEmpty(text)) return;
+            info.AnimationScript = path;
+            info.Loaded = true;
         }
     }
 }

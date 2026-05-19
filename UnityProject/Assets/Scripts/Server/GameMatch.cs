@@ -40,7 +40,7 @@ namespace ET.Server
             Array.Clear(_weaponLog, 0, _weaponLog.Length);
             Array.Clear(_deathLog,  0, _deathLog.Length);
 
-            string logPath = _cvLog.String;
+            string logPath = _cvLog.StringValue;
             if (!string.IsNullOrEmpty(logPath))
             {
                 try

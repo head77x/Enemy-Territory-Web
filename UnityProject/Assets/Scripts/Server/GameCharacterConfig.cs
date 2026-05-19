@@ -6,6 +6,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using ET.Core;
 using ET.Game;
 
 namespace ET.Server
@@ -167,7 +168,7 @@ namespace ET.Server
                 return false;
 
             // Load and parse the animation script
-            string text = ET.Game.FileSystem.ReadAllText(animScript);
+            string text = FileSystem.ReadAllText(animScript);
             if (string.IsNullOrEmpty(text))
             {
                 Debug.LogWarning($"G_ParseAnimationFiles: cannot read {animScript}");

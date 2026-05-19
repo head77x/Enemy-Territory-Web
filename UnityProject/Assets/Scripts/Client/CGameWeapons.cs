@@ -28,15 +28,6 @@ namespace ET.Client
         public Color    FlashColor;
     }
 
-    // CentityState is defined in CGameEntities; we declare a minimal stand-in
-    // if the full file is not yet compiled in this assembly.
-    public class CentityState
-    {
-        public EntityState CurrentState = new EntityState();
-        public Vector3     LerpOrigin;
-        public Vector3     LerpAngles;
-    }
-
     public static class CGameWeapons
     {
         private static readonly WeaponRenderInfo[] _weaponInfo =

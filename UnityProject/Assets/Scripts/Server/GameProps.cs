@@ -280,7 +280,8 @@ namespace ET.Game
                 ? entry.Sounds[_rng.Next(entry.Sounds.Length)]
                 : entry.Sounds[0];
 
-            AudioSystem.S_StartSound(origin, entityNum, SoundChannel.Auto, snd, entry.Volume, entry.Range);
+            int sfxHandle = AudioSystem.S_RegisterSound(snd, false);
+            AudioSystem.S_StartSound(origin, entityNum, 0 /* CHAN_AUTO */, sfxHandle, entry.Volume, entry.Range);
         }
     }
 }
@@ -507,14 +508,14 @@ namespace ET.Server
             if (def != null && !string.IsNullOrEmpty(def.DestroyedModel))
             {
                 // Switch to destroyed model via entity state.
-                ent.S.ModelIndex2 = (short)CollisionSystem.RegisterModel(def.DestroyedModel);
+                ent.S.ModelIndex2 = (short)NetworkManager.RegisterModel(def.DestroyedModel);
             }
 
             OnPropDestroyed?.Invoke(ent.EntityNum, ent.ClassName, destroyerTeam);
 
             // Explosive props deal splash damage on destruction.
             if (def != null && def.Type == PropType.Explosive && def.Damage > 0)
-                ServerGameLogic.G_RadiusDamage(ent.Origin, attacker, def.Damage, def.SplashRadius, ent, def.Mod);
+                MissileSystem.G_RadiusDamage(ent.Origin, attacker, def.Damage, def.SplashRadius, ent, def.Mod);
         }
 
         // ------------------------------------------------------------------
@@ -529,7 +530,7 @@ namespace ET.Server
 
             var def = GetPropDef(ent);
             if (def != null && !string.IsNullOrEmpty(def.BuiltModel))
-                ent.S.ModelIndex2 = (short)CollisionSystem.RegisterModel(def.BuiltModel);
+                ent.S.ModelIndex2 = (short)NetworkManager.RegisterModel(def.BuiltModel);
         }
 
         // ------------------------------------------------------------------
@@ -632,10 +633,11 @@ namespace ET.Server
             }
             string sub  = args[1].ToLowerInvariant();
             string name = args.Length >= 3 ? args[2] : "ET_Bot";
+            // Forward to the server as a console command — ET does the same via trap_SendConsoleCommand.
             if (sub == "add")
-                ServerGameLogic.AddBot(name);
+                CmdSystem.ExecuteText(CmdExecType.Now, $"addbot {name}");
             else if (sub == "remove")
-                ServerGameLogic.RemoveBot(name);
+                CmdSystem.ExecuteText(CmdExecType.Now, $"kick {name}");
             else
                 Debug.Log("bot: unknown sub-command. Use 'add' or 'remove'.");
         }

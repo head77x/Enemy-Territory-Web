@@ -247,6 +247,7 @@ namespace ET.App
             _hudActive   = true;
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible   = false;
+            Debug.Log($"[ETUIManager] HandleMenuClosed — LocalPlayerActive={ETGameManager.LocalPlayerActive} MenuIsOpen={MenuIsOpen}");
 
             // Only activate free-cam if the local player hasn't spawned yet.
             // Once spawned, ETGameManager drives the camera from PlayerState.

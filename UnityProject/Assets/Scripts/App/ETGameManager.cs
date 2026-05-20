@@ -54,6 +54,9 @@ namespace ET.App
         private float _camPitch;
         private const float MouseSens = 0.15f;
 
+        // One-shot diagnostic flag for DriveLocalPlayer
+        private bool _drivingLogged;
+
         // Pmove reused each server frame (avoids per-frame alloc)
         private readonly PlayerMovement _pm = new PlayerMovement();
         private PmoveInput _pmInput;
@@ -260,6 +263,10 @@ namespace ET.App
             // ClientBegin → ClientSpawn: places player at a spawn point
             ServerGameLogic.ClientBegin(LocalClientNum);
 
+            // Seed CommandTime to current server time so the first Pmove gets a
+            // normal 50ms delta instead of the full uptime since startup.
+            gc.PS.CommandTime = ServerMain.Svs.Time;
+
             // Initialise camera angles from the spawned player state
             var ps = gc.PS;
             _camYaw   = ps.ViewAngles1;  // ET yaw
@@ -317,6 +324,16 @@ namespace ET.App
         {
             var gc = ServerGameLogic.Clients[LocalClientNum];
             if (gc == null) return;
+
+            if (!_drivingLogged)
+            {
+                _drivingLogged = true;
+                var dbgPs = gc.PS;
+                Debug.Log($"[ETGameManager] DriveLocalPlayer first call — " +
+                          $"PmType={dbgPs.PmType} origin=ET({dbgPs.Origin0:F0},{dbgPs.Origin1:F0},{dbgPs.Origin2:F0}) " +
+                          $"cmdTime={dbgPs.CommandTime} svsTime={ServerMain.Svs.Time} " +
+                          $"cursorLock={Cursor.lockState} MenuIsOpen={ETUIManager.MenuIsOpen}");
+            }
 
             // Keep the server-side slot alive (prevents timeout) and snapshots disabled
             var cl = ServerMain.Svs.Clients[LocalClientNum];
@@ -416,6 +433,17 @@ namespace ET.App
         /// </summary>
         private void OnGameRunFrame(int serverTime)
         {
+            // Save ps.CommandTime BEFORE G_RunFrame runs ClientThink_real.
+            // ClientThink_real sets ps.CommandTime = cmd.ServerTime (same as gc.LastCmd.ServerTime),
+            // which would give Pmove msec = 0.  We restore the saved value afterwards so
+            // Pmove always advances by one server frame (≤ 50 ms).
+            int prevCmdTime = 0;
+            if (LocalPlayerActive)
+            {
+                var gc0 = ServerGameLogic.Clients[LocalClientNum];
+                if (gc0 != null) prevCmdTime = gc0.PS.CommandTime;
+            }
+
             // Run all entity thinks and client think-real (stores LastCmd, fires inactivity, etc.)
             ServerGameLogic.G_RunFrame(serverTime);
 
@@ -426,16 +454,28 @@ namespace ET.App
             if (gc == null) return;
 
             var ps = gc.PS;
-            if (ps.PmType != GameConst.PM_NORMAL && ps.PmType != GameConst.PM_NOCLIP) return;
+            if (ps.PmType != GameConst.PM_NORMAL && ps.PmType != GameConst.PM_NOCLIP)
+            {
+                Debug.Log($"[ETGameManager] OnGameRunFrame: Pmove skipped PmType={ps.PmType}");
+                return;
+            }
 
-            // Reuse the PmoveInput struct; share the PS reference so Pmove writes back into gc.PS
-            _pmInput.Ps           = ps;
-            _pmInput.Cmd          = gc.LastCmd;
-            _pmInput.OldCmd       = gc.LastCmd;
-            _pmInput.GameType     = CvarSystem.GetInt("g_gametype");
-            _pmInput.TraceMask    = MASK_PLAYERSOLID;
-            _pmInput.Trace        = CollisionSystem.DefaultTraceFunc;
-            _pmInput.PointContents= CollisionSystem.DefaultPointContentsFunc;
+            // Restore CommandTime and advance cmd.ServerTime to current tick.
+            // Cap msec to one server frame (50 ms) to prevent a physics explosion
+            // on the very first tick where prevCmdTime may be far in the past.
+            int msec = serverTime - prevCmdTime;
+            if (msec < 1)  msec = 1;
+            if (msec > 50) msec = 50;
+            ps.CommandTime        = serverTime - msec;
+            gc.LastCmd.ServerTime = serverTime;
+
+            _pmInput.Ps            = ps;
+            _pmInput.Cmd           = gc.LastCmd;
+            _pmInput.OldCmd        = gc.LastCmd;
+            _pmInput.GameType      = CvarSystem.GetInt("g_gametype");
+            _pmInput.TraceMask     = MASK_PLAYERSOLID;
+            _pmInput.Trace         = CollisionSystem.DefaultTraceFunc;
+            _pmInput.PointContents = CollisionSystem.DefaultPointContentsFunc;
 
             _pm.Pmove(_pmInput);
 

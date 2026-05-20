@@ -192,11 +192,35 @@ namespace ET.Game
             int layerMask = LayerMaskForBrushmask(brushmask);
 
             // ------------------------------------------------------------------
+            // PhysX BoxCast does not report a hit when the swept shape starts
+            // in CONTACT with (touching, not penetrating) a surface — it only
+            // reports new collisions found during the sweep.  To work around this,
+            // we shift the BoxCast start position slightly backward (opposite to
+            // the sweep direction) before calling Physics.BoxCast so that any
+            // surface the box is merely touching becomes a genuine sweep hit.
+            // The fraction and endPos are then remapped back to the original
+            // ET-space sweep range.  The startSolid OverlapBox always uses the
+            // ORIGINAL (un-shifted) position.
+            // ------------------------------------------------------------------
+            const float kSweepEpsilon = 0.125f;  // tiny relative to map scale
+            Vector3 unityStartOrig = unityStart;
+            float   distOrig       = dist;
+            float   sweepEps       = 0f;
+
+            if (!isPointTrace && dist > kSweepEpsilon * 2f)
+            {
+                sweepEps    = kSweepEpsilon;
+                unityStart -= dir * sweepEps;   // shift back so touching faces are swept
+                dist       += sweepEps;
+            }
+
+            // ------------------------------------------------------------------
             // Early-out: check if the start position is already in solid.
+            // Always test the ORIGINAL (un-shifted) position.
             // ------------------------------------------------------------------
             bool startSolid = false;
             {
-                Collider[] overlaps = Physics.OverlapBox(unityStart, unityExtents,
+                Collider[] overlaps = Physics.OverlapBox(unityStartOrig, unityExtents,
                     Quaternion.identity, layerMask,
                     QueryTriggerInteraction.Ignore);
                 if (overlaps != null && overlaps.Length > 0)
@@ -250,7 +274,7 @@ namespace ET.Game
                     // This matches Q3/ET CM_BoxTrace behaviour: trace.fraction = 0
                     // when the trace starts in solid and no clear path exists.
                     int solidContents = 0;
-                    Collider[] overlapsForContents = Physics.OverlapBox(unityStart, unityExtents,
+                    Collider[] overlapsForContents = Physics.OverlapBox(unityStartOrig, unityExtents,
                         Quaternion.identity, layerMask, QueryTriggerInteraction.Ignore);
                     if (overlapsForContents != null)
                         foreach (var col in overlapsForContents)
@@ -277,13 +301,18 @@ namespace ET.Game
                 };
             }
 
-            // Build fraction: how far along the movement did we hit?
-            float fraction = (dist > 1e-6f) ? Mathf.Clamp01(hitInfo.distance / dist) : 0f;
+            // Build fraction in ORIGINAL (un-shifted) ET sweep space.
+            // hitInfo.distance is measured from the shifted start, so subtract the
+            // epsilon before dividing by the original sweep length.
+            float adjHitDist = hitInfo.distance - sweepEps;
+            float fraction   = (distOrig > 1e-6f)
+                ? Mathf.Clamp01(adjHitDist / distOrig)
+                : 0f;
 
             // Convert hit point and normal back to ET space.
-            // hit.point is the surface contact point (centre of the box face that
-            // hit); reconstruct the box-centre position at impact.
-            Vector3 unityHitCentre = unityStart + dir * hitInfo.distance;
+            // Reconstruct the box-centre position at impact using the ORIGINAL
+            // (un-shifted) start so the endPos is in proper ET-space coordinates.
+            Vector3 unityHitCentre = unityStartOrig + dir * (fraction * distOrig);
             Vector3 etHitCentre    = ToET(unityHitCentre);
             Vector3 etEndPos       = etHitCentre - etOffset;   // remove box offset
 

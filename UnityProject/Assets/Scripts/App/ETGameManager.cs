@@ -61,10 +61,11 @@ namespace ET.App
         // ET content mask: CONTENTS_SOLID | CONTENTS_PLAYERCLIP | CONTENTS_BODY
         private const int MASK_PLAYERSOLID = 1 | 0x10000 | 0x2000;
 
-        // Viewmodel (first-person weapon) — dedicated depth-only camera + mesh
+        // Viewmodel (first-person weapon) — dedicated depth-only camera + real MD3 mesh
         private const int ViewmodelLayer = 30;
         private Camera    _viewmodelCam;
         private Transform _viewmodelRoot;
+        private int       _viewmodelWeapon = GameConst.WP_NONE;
 
         // ----------------------------------------------------------------
         // MonoBehaviour lifecycle
@@ -325,9 +326,10 @@ namespace ET.App
         /// Called every render frame when the local player is active and no menu is open.
         /// </summary>
         /// <summary>
-        /// Creates a depth-only secondary camera and a placeholder weapon mesh
-        /// for the first-person viewmodel.  Layer 30 is used exclusively so the
-        /// main camera never renders the weapon (avoids z-fighting with walls).
+        /// Creates a depth-only secondary camera for the first-person viewmodel.
+        /// Layer 30 is used exclusively so the main camera never renders the weapon
+        /// (avoids z-fighting with walls).  The actual MD3 weapon mesh is loaded
+        /// from the virtual filesystem (PK3) by <see cref="UpdateViewmodel"/>.
         /// </summary>
         private void SetupViewmodel()
         {
@@ -347,36 +349,54 @@ namespace ET.App
             _viewmodelCam.fieldOfView   = 70f;
             _viewmodelCam.depth         = cam.depth + 1;
 
-            // Weapon root parented to the viewmodel camera
             _viewmodelRoot = new GameObject("ViewWeaponRoot").transform;
-            _viewmodelRoot.SetParent(vmGo.transform);
-
-            // Build a simple gun shape from two cubes (body + barrel)
-            CreateWeaponPart(_viewmodelRoot,
-                localPos: new Vector3(8f, -8f, 24f),
-                localRot: Quaternion.Euler(0f, -10f, 0f),
-                localScale: new Vector3(3f, 3f, 18f),   // barrel
-                color: new Color(0.25f, 0.25f, 0.25f));
-
-            CreateWeaponPart(_viewmodelRoot,
-                localPos: new Vector3(8f, -11f, 18f),
-                localRot: Quaternion.Euler(-10f, -10f, 0f),
-                localScale: new Vector3(3f, 5f, 8f),    // grip
-                color: new Color(0.20f, 0.15f, 0.10f));
+            _viewmodelRoot.SetParent(vmGo.transform, false);
         }
 
-        private static void CreateWeaponPart(Transform parent, Vector3 localPos,
-            Quaternion localRot, Vector3 localScale, Color color)
+        /// <summary>
+        /// Loads the real MD3 weapon model for <paramref name="weapon"/> from the
+        /// PK3 virtual filesystem and attaches it to the viewmodel camera.
+        /// Called every DriveLocalPlayer frame; no-ops if the weapon hasn't changed.
+        /// </summary>
+        private void UpdateViewmodel(int weapon)
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.layer = ViewmodelLayer;
-            UnityEngine.Object.Destroy(go.GetComponent<Collider>());
-            go.GetComponent<MeshRenderer>().material =
-                new Material(Shader.Find("Standard")) { color = color };
-            go.transform.SetParent(parent);
-            go.transform.localPosition = localPos;
-            go.transform.localRotation = localRot;
-            go.transform.localScale    = localScale;
+            if (weapon == _viewmodelWeapon) return;
+            _viewmodelWeapon = weapon;
+
+            // Remove old mesh
+            if (_viewmodelRoot != null)
+            {
+                for (int i = _viewmodelRoot.childCount - 1; i >= 0; i--)
+                    Destroy(_viewmodelRoot.GetChild(i).gameObject);
+            }
+
+            if (weapon <= GameConst.WP_NONE || _viewmodelRoot == null) return;
+
+            var wri = ET.Client.CGameWeapons.CG_GetWeaponRenderInfo(weapon);
+            if (wri == null || string.IsNullOrEmpty(wri.ModelPath)) return;
+
+            var go = RuntimeResourceLoader.LoadMd3(wri.ModelPath, _viewmodelRoot);
+            if (go == null)
+            {
+                Debug.LogWarning($"[ETGameManager] Viewmodel MD3 not found: {wri.ModelPath}");
+                return;
+            }
+
+            SetLayerRecursive(go, ViewmodelLayer);
+
+            // Position the weapon in viewmodel-camera local space (lower-right, forward)
+            go.transform.localPosition = new Vector3(5f, -8f, 24f);
+            go.transform.localRotation = Quaternion.Euler(-5f, -10f, 0f);
+            go.transform.localScale    = Vector3.one;
+
+            Debug.Log($"[ETGameManager] Viewmodel loaded: {wri.ModelPath}");
+        }
+
+        private static void SetLayerRecursive(GameObject root, int layer)
+        {
+            root.layer = layer;
+            foreach (Transform child in root.transform)
+                SetLayerRecursive(child.gameObject, layer);
         }
 
         private void DriveLocalPlayer()
@@ -448,7 +468,8 @@ namespace ET.App
                 cam.transform.rotation = Quaternion.Euler(_camPitch, _camYaw, 0f);
             }
 
-            // Keep viewmodel camera locked to main camera
+            // Reload viewmodel when weapon changes; keep camera synced
+            UpdateViewmodel(ps.Weapon);
             if (_viewmodelCam != null && cam != null)
             {
                 _viewmodelCam.transform.position = cam.transform.position;

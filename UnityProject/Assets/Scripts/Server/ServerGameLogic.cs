@@ -204,7 +204,9 @@ namespace ET.Server
         public static event Action<int>         OnClientDisconnect;
         public static event Action<int>         OnClientBegin;
         public static event Action<int, UserCmd> OnClientUserCmd;
+#pragma warning disable CS0067
         public static event Action<int>         OnClientDeath;
+#pragma warning restore CS0067
         public static event Action              OnGameInit;
         public static event Action              OnGameShutdown;
         public static event Action<int>         OnRunFrame;

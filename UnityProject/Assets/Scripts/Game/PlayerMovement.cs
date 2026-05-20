@@ -1766,7 +1766,6 @@ namespace ET.Game
             ps.NextWeapon = newweapon;
 
             // Play switch sound / handle grenade timer
-            bool altSwitchAnim = false;
             switch (newweapon)
             {
                 case int w when (w == GameConst.WP_CARBINE || w == GameConst.WP_KAR98):
@@ -1799,7 +1798,6 @@ namespace ET.Game
             if (newweapon == WeaponAlt(oldweapon))
             {
                 PM_StartWeaponAnim(PM_AltSwitchFromForWeapon(oldweapon));
-                altSwitchAnim = true;
             }
             else
             {
@@ -1836,13 +1834,13 @@ namespace ET.Game
                     if (newweapon == WeaponAlt(oldweapon)) switchtime = 0;
                     break;
                 case int w when (w == GameConst.WP_SILENCER):
-                    if (newweapon == WeaponAlt(oldweapon)) { switchtime = 1000; altSwitchAnim = true; }
+                    if (newweapon == WeaponAlt(oldweapon)) switchtime = 1000;
                     break;
                 case int w when (w == GameConst.WP_COLT):
                     if (newweapon == WeaponAlt(oldweapon)) switchtime = 0;
                     break;
                 case int w when (w == WP_SILENCED_COLT):
-                    if (newweapon == WeaponAlt(oldweapon)) { switchtime = 1000; altSwitchAnim = true; }
+                    if (newweapon == WeaponAlt(oldweapon)) switchtime = 1000;
                     break;
                 case int w when (w == GameConst.WP_FG42 || w == GameConst.WP_FG42SCOPE):
                     if (newweapon == WeaponAlt(oldweapon)) switchtime = 50;
@@ -1916,27 +1914,26 @@ namespace ET.Game
 
             // Raise switch times
             int switchtime = 250;
-            bool altSwitchAnim = false;
             bool doSwitchAnim  = true;
 
             switch (newweapon)
             {
                 case int w when (w == GameConst.WP_LUGER):
-                    if (newweapon == WeaponAlt(oldweapon)) { switchtime = 0; altSwitchAnim = true; }
+                    if (newweapon == WeaponAlt(oldweapon)) switchtime = 0;
                     break;
                 case int w when (w == GameConst.WP_SILENCER):
-                    if (newweapon == WeaponAlt(oldweapon)) { switchtime = 1190; altSwitchAnim = true; }
+                    if (newweapon == WeaponAlt(oldweapon)) switchtime = 1190;
                     break;
                 case int w when (w == GameConst.WP_COLT):
-                    if (newweapon == WeaponAlt(oldweapon)) { switchtime = 0; altSwitchAnim = true; }
+                    if (newweapon == WeaponAlt(oldweapon)) switchtime = 0;
                     break;
                 case int w when (w == WP_SILENCED_COLT):
-                    if (newweapon == WeaponAlt(oldweapon)) { switchtime = 1190; altSwitchAnim = true; }
+                    if (newweapon == WeaponAlt(oldweapon)) switchtime = 1190;
                     break;
                 case int w when (w == GameConst.WP_CARBINE):
                     if (newweapon == WeaponAlt(oldweapon))
                     {
-                        altSwitchAnim = true;
+                        
                         if (ps.AmmoClip[BG_FindAmmoForWeapon(oldweapon)] != 0)
                             switchtime = 1347;
                         else
@@ -1944,12 +1941,12 @@ namespace ET.Game
                     }
                     break;
                 case int w when (w == WP_M7):
-                    if (newweapon == WeaponAlt(oldweapon)) { switchtime = 2350; altSwitchAnim = true; }
+                    if (newweapon == WeaponAlt(oldweapon)) switchtime = 2350;
                     break;
                 case int w when (w == GameConst.WP_KAR98):
                     if (newweapon == WeaponAlt(oldweapon))
                     {
-                        altSwitchAnim = true;
+                        
                         if (ps.AmmoClip[BG_FindAmmoForWeapon(oldweapon)] != 0)
                             switchtime = 1347;
                         else
@@ -1957,7 +1954,7 @@ namespace ET.Game
                     }
                     break;
                 case int w when (w == WP_GPG40):
-                    if (newweapon == WeaponAlt(oldweapon)) { switchtime = 2350; altSwitchAnim = true; }
+                    if (newweapon == WeaponAlt(oldweapon)) switchtime = 2350;
                     break;
                 case int w when (w == GameConst.WP_FG42 || w == GameConst.WP_FG42SCOPE):
                     if (newweapon == WeaponAlt(oldweapon)) switchtime = 50;
@@ -1969,10 +1966,10 @@ namespace ET.Game
                     if (newweapon == WeaponAlt(oldweapon)) switchtime = 1250;
                     break;
                 case int w when (w == GameConst.WP_MORTAR):
-                    if (newweapon == WeaponAlt(oldweapon)) { switchtime = 1000; altSwitchAnim = true; }
+                    if (newweapon == WeaponAlt(oldweapon)) switchtime = 1000;
                     break;
                 case int w when (w == GameConst.WP_MORTAR_SET):
-                    if (newweapon == WeaponAlt(oldweapon)) { switchtime = 1667; altSwitchAnim = true; }
+                    if (newweapon == WeaponAlt(oldweapon)) switchtime = 1667;
                     break;
             }
 

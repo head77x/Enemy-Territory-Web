@@ -116,23 +116,23 @@ namespace ET.BotAI
             switch (cmd)
             {
                 case VoiceCmd.FollowMe:
-                    bot.State           = BotState.FollowingOrder;
+                    bot.State           = BotBehaviorState.FollowingOrder;
                     bot.TargetEntityNum = senderClientNum;
                     break;
 
                 case VoiceCmd.AttackObjective:
-                    bot.State = BotState.Capturing;
+                    bot.State = BotBehaviorState.Capturing;
                     break;
 
                 case VoiceCmd.DefendObjective:
-                    bot.State = BotState.Defending;
+                    bot.State = BotBehaviorState.Defending;
                     break;
 
                 case VoiceCmd.NeedMedic:
                     // Only a medic responds to a medic call
                     if (bot.PlayerClass == GameConst.PC_MEDIC)
                     {
-                        bot.State           = BotState.Reviving;
+                        bot.State           = BotBehaviorState.Reviving;
                         bot.TargetEntityNum = senderClientNum;
                     }
                     break;
@@ -141,21 +141,21 @@ namespace ET.BotAI
                     // Only a Field Ops responds to an ammo request
                     if (bot.PlayerClass == GameConst.PC_FIELDOPS)
                     {
-                        bot.State           = BotState.Resupplying;
+                        bot.State           = BotBehaviorState.Resupplying;
                         bot.TargetEntityNum = senderClientNum;
                     }
                     break;
 
                 case VoiceCmd.CoverMe:
                     // Follow and protect the sender
-                    bot.State           = BotState.FollowingOrder;
+                    bot.State           = BotBehaviorState.FollowingOrder;
                     bot.TargetEntityNum = senderClientNum;
                     break;
 
                 case VoiceCmd.MovingOut:
                     // Join the advance toward the current objective
-                    if (bot.State == BotState.Idle || bot.State == BotState.Defending)
-                        bot.State = BotState.Capturing;
+                    if (bot.State == BotBehaviorState.Idle || bot.State == BotBehaviorState.Defending)
+                        bot.State = BotBehaviorState.Capturing;
                     break;
 
                 // Informational-only commands — no state change required

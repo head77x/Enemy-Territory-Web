@@ -20,6 +20,7 @@ namespace ET.Client
         // -------------------------------------------------------------------------
         // Events — replace VM_Call(cgvm, CG_*) boundaries
         // -------------------------------------------------------------------------
+#pragma warning disable CS0067 // Events are part of the public cgame boundary API
 
         /// <summary>Raised when a new snapshot is available for the cgame to consume.</summary>
         public static event Action<ClientSnapshot> OnCGameSnapshot;
@@ -57,6 +58,7 @@ namespace ET.Client
         /// Replaces VM_Call(cgvm, CG_SHUTDOWN).
         /// </summary>
         public static event Action OnCGameShutdown;
+#pragma warning restore CS0067
 
         // -------------------------------------------------------------------------
         // Config-string cache

@@ -48,7 +48,7 @@ namespace ET.Game
         // -----------------------------------------------------------------------
         private static string  s_mapName      = string.Empty;
         private static int     s_checksum     = 0;
-        private static bool    s_mapLoaded    = false;
+
         private static string  s_entityString = string.Empty;
 
         // -----------------------------------------------------------------------
@@ -77,7 +77,7 @@ namespace ET.Game
         {
             s_mapName   = mapName ?? string.Empty;
             s_checksum  = checksum;
-            s_mapLoaded = true;
+
 
             // Client load: Unity scene already contains all geometry as PhysX
             // colliders — nothing to parse.  Server headless BSP parse goes here.
@@ -93,7 +93,7 @@ namespace ET.Game
         {
             s_mapName      = string.Empty;
             s_checksum     = 0;
-            s_mapLoaded    = false;
+
             s_entityString = string.Empty;
         }
 

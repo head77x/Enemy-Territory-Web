@@ -14,8 +14,8 @@ namespace ET.BotAI
     // Bot difficulty levels
     public enum BotSkill { Easy = 1, Medium = 2, Hard = 3, Expert = 4 }
 
-    // Bot states (mirrors ET's bot goal states)
-    public enum BotState
+    // Bot behavior states (mirrors ET's bot goal states)
+    public enum BotBehaviorState
     {
         Idle,
         Roaming,          // no objective — wander
@@ -32,10 +32,10 @@ namespace ET.BotAI
 
     public class BotAgent
     {
-        public int          ClientNum;
-        public string       Name;
-        public BotSkill     Skill;
-        public BotState     State;
+        public int              ClientNum;
+        public string           Name;
+        public BotSkill         Skill;
+        public BotBehaviorState State;
         public int          Team;             // TEAM_AXIS or TEAM_ALLIES
         public int          PlayerClass;      // PC_SOLDIER etc.
         public Vector3      GoalPos;
@@ -57,7 +57,7 @@ namespace ET.BotAI
             Skill           = skill;
             Team            = team;
             PlayerClass     = playerClass;
-            State           = BotState.Idle;
+            State           = BotBehaviorState.Idle;
             TargetEntityNum = -1;
             LastThinkTime   = 0f;
             StateTimer      = 0f;
@@ -141,14 +141,14 @@ namespace ET.BotAI
             // Execute the current state
             switch (bot.State)
             {
-                case BotState.Idle:            StateIdle(bot, deltaTime);       break;
-                case BotState.Roaming:         StateRoaming(bot, deltaTime);    break;
-                case BotState.Attacking:       StateAttacking(bot, deltaTime);  break;
-                case BotState.Retreating:      StateRetreating(bot, deltaTime); break;
-                case BotState.Capturing:       StateCapturing(bot, deltaTime);  break;
-                case BotState.Defending:       StateDefending(bot, deltaTime);  break;
-                case BotState.Reviving:        StateReviving(bot, deltaTime);   break;
-                case BotState.FollowingOrder:  StateFollowingOrder(bot, deltaTime); break;
+                case BotBehaviorState.Idle:            StateIdle(bot, deltaTime);       break;
+                case BotBehaviorState.Roaming:         StateRoaming(bot, deltaTime);    break;
+                case BotBehaviorState.Attacking:       StateAttacking(bot, deltaTime);  break;
+                case BotBehaviorState.Retreating:      StateRetreating(bot, deltaTime); break;
+                case BotBehaviorState.Capturing:       StateCapturing(bot, deltaTime);  break;
+                case BotBehaviorState.Defending:       StateDefending(bot, deltaTime);  break;
+                case BotBehaviorState.Reviving:        StateReviving(bot, deltaTime);   break;
+                case BotBehaviorState.FollowingOrder:  StateFollowingOrder(bot, deltaTime); break;
                 // Remaining states fall back to idle behaviour for now
                 default:                       StateIdle(bot, deltaTime);       break;
             }
@@ -166,14 +166,14 @@ namespace ET.BotAI
             // 1. Low health → retreat
             if (bot.Health < RETREAT_HEALTH)
             {
-                ChangeState(bot, BotState.Retreating);
+                ChangeState(bot, BotBehaviorState.Retreating);
                 return;
             }
 
             // 2. Visible enemy → attack
             if (bot.TargetEntityNum != -1 && CanSeeTarget(bot))
             {
-                ChangeState(bot, BotState.Attacking);
+                ChangeState(bot, BotBehaviorState.Attacking);
                 return;
             }
 
@@ -181,16 +181,16 @@ namespace ET.BotAI
             if (bot.GoalPos != Vector3.zero &&
                 Vector3.Distance(bot.NavAgent.transform.position, bot.GoalPos) < OBJECTIVE_NEAR_DIST)
             {
-                ChangeState(bot, BotState.Capturing);
+                ChangeState(bot, BotBehaviorState.Capturing);
                 return;
             }
 
             // 4. Default: roam
-            if (bot.State == BotState.Idle || bot.State == BotState.Attacking)
-                ChangeState(bot, BotState.Roaming);
+            if (bot.State == BotBehaviorState.Idle || bot.State == BotBehaviorState.Attacking)
+                ChangeState(bot, BotBehaviorState.Roaming);
         }
 
-        private static void ChangeState(BotAgent bot, BotState next)
+        private static void ChangeState(BotAgent bot, BotBehaviorState next)
         {
             if (bot.State == next) return;
             bot.State      = next;
@@ -224,7 +224,7 @@ namespace ET.BotAI
         {
             if (bot.TargetEntityNum == -1)
             {
-                ChangeState(bot, BotState.Roaming);
+                ChangeState(bot, BotBehaviorState.Roaming);
                 return;
             }
 
@@ -236,7 +236,7 @@ namespace ET.BotAI
         {
             if (bot.TargetEntityNum == -1)
             {
-                ChangeState(bot, BotState.Roaming);
+                ChangeState(bot, BotBehaviorState.Roaming);
                 return;
             }
 
@@ -260,7 +260,7 @@ namespace ET.BotAI
             // Hold position near goal; engage any visible enemy
             if (bot.TargetEntityNum != -1 && CanSeeTarget(bot))
             {
-                ChangeState(bot, BotState.Attacking);
+                ChangeState(bot, BotBehaviorState.Attacking);
                 return;
             }
 
@@ -353,7 +353,7 @@ namespace ET.BotAI
             cmd.UpMove        = 0;
 
             // --- View angles ---
-            if (bot.State == BotState.Attacking && bot.TargetEntityNum != -1)
+            if (bot.State == BotBehaviorState.Attacking && bot.TargetEntityNum != -1)
             {
                 Vector3 aimDir        = AimWithNoise(bot, bot.EnemyPos);
                 Quaternion aimRot     = Quaternion.LookRotation(aimDir);
@@ -373,7 +373,7 @@ namespace ET.BotAI
             }
 
             // --- Buttons ---
-            if (bot.State == BotState.Attacking && CanSeeTarget(bot))
+            if (bot.State == BotBehaviorState.Attacking && CanSeeTarget(bot))
                 cmd.Buttons |= Button.Attack;
 
             return cmd;

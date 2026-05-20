@@ -270,8 +270,10 @@ namespace ET.Client
         public static bool Initialized { get; private set; }
 
         // Draw events — Unity UI subscriber renders the console
+#pragma warning disable CS0067
         public static event Action<float> OnDrawConsole;         // frac = height 0..1
         public static event Action<string[]> OnDrawNotify;       // recent lines
+#pragma warning restore CS0067
 
         // Con_Init
         public static void Init()

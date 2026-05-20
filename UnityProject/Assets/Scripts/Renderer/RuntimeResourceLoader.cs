@@ -740,15 +740,43 @@ public static class RuntimeResourceLoader
         if (string.IsNullOrEmpty(shaderName)) shaderName = "default";
         if (_matCache.TryGetValue(shaderName, out var m)) return m;
 
-        var etShader = ShaderParser.FindShaderRuntime(shaderName);
+        // ET shader defs store names WITHOUT extension (e.g. "models/weapons2/fg42/fg42_2").
+        // MD3 surfaces store shader names WITH extension (e.g. "...fg42_2.tga").
+        // Strip extension before the shader lookup so they match.
+        string shaderKey = shaderName;
+        string ext = Path.GetExtension(shaderName);
+        if (!string.IsNullOrEmpty(ext))
+        {
+            string dir2 = Path.GetDirectoryName(shaderName)?.Replace('\\', '/') ?? "";
+            string stem  = Path.GetFileNameWithoutExtension(shaderName);
+            shaderKey = string.IsNullOrEmpty(dir2) ? stem : dir2 + "/" + stem;
+        }
+
+        var etShader = ShaderParser.FindShaderRuntime(shaderKey);
+        if (etShader == null && shaderKey != shaderName)
+            etShader = ShaderParser.FindShaderRuntime(shaderName);   // fallback: try with extension
+
         Material mat = etShader != null
             ? etShader.ToMaterialRuntime()
             : new Material(FindUnityShader(false)) { name = shaderName };
 
         if (mat.mainTexture == null)
         {
-            var tex = LoadTexture(shaderName);
-            if (tex != null)
+            // Try shaderKey (no extension) first — LoadTexture will probe all extensions.
+            var tex = LoadTexture(shaderKey);
+            if (tex == null && shaderKey != shaderName)
+                tex = LoadTexture(shaderName);
+
+            if (tex == null)
+            {
+                // Diagnostics: list what is actually in the same directory
+                string texDir = Path.GetDirectoryName(shaderKey)?.Replace('\\', '/') ?? "";
+                var available = ET.Core.FileSystem.FS_GetFileList(texDir, ".tga");
+                var availJpg  = ET.Core.FileSystem.FS_GetFileList(texDir, ".jpg");
+                Debug.LogWarning($"[RuntimeResourceLoader] Texture not found for shader '{shaderName}'. " +
+                    $"Dir '{texDir}' has .tga: [{string.Join(", ", available)}] .jpg: [{string.Join(", ", availJpg)}]");
+            }
+            else
             {
                 mat.mainTexture = tex;
                 if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);

@@ -2,6 +2,7 @@
 
 > 브랜치: `claude/evaluate-webassembly-conversion-etj1D`
 > 원본 소스: GPL 공개 소스 (Wolfenstein: Enemy Territory, ~473,000 줄 C/C++)
+> **컴파일 상태: ✅ 에러 0개 (경고 없음)**
 
 ---
 
@@ -50,7 +51,6 @@
 | `Game/Animations.cs` | `bg_animation.c` | 데이터 기반 애니메이션 스크립트 시스템 — AnimMoveType/Condition/WeaponClass, BG_ParseAnimationFile, BG_AnimScriptEvent |
 | `Game/CollisionSystem.cs` | `cm_*.c` | BSP 충돌 → Unity PhysX 백엔드 — CM_BoxTrace, CM_PointContents, DefaultTraceFunc |
 | `Game/AudioSystem.cs` | `snd_*.c` | Unity AudioSource 풀(32 채널) — S_RegisterSound, S_StartSound, S_Respatialize |
-| `Game/ETGameManager.cs` | (통합) | MonoBehaviour 통합 씬 — 모든 레이어 연결, SV_Frame→CL_Frame→BotAI 루프 |
 
 ### Layer 4 — 서버 핵심 ✅
 
@@ -61,7 +61,6 @@
 | `Server/ServerInit.cs` | `sv_init.c` | SV_Init/SpawnServer/Startup, PROTOCOL_VERSION=84 |
 | `Server/ServerSnapshot.cs` | `sv_snapshot.c` | 스냅샷 빌드, 델타 엔티티 전송, SVC_* 옵코드 |
 | `Server/ServerClient.cs` | `sv_client.c` | 연결/해제, usercmd 처리, 신뢰성 명령 |
-| `Server/ServerWorld.cs` | `sv_world.c` | AABB 공간 쿼리, swept-AABB trace |
 | `Server/ServerGame.cs` | `sv_game.c` | 게임 VM 브릿지, 서버↔게임 이벤트 |
 
 ### Layer 5 — 클라이언트 핵심 ✅
@@ -88,8 +87,10 @@
 
 | C# 파일 | 원본 | 설명 |
 |---------|------|------|
-| `BotAI/BotMain.cs` | `g_bot.c`, `ai_main.c` | 봇 상태 머신, NavMesh 이동, UserCmd 생성 |
+| `BotAI/BotMain.cs` | `g_bot.c`, `ai_main.c` | 봇 상태 머신(BotBehaviorState), NavMesh 이동, UserCmd 생성, AllBotStates/GetBotState |
 | `BotAI/BotChat.cs` | `ai_chat.c` | 음성 명령 처리, 채팅 응답 테이블 |
+| `BotAI/BotCombatAI.cs` | `ai_dmgoal_mp.c`, `ai_dmnet_mp.c`, `ai_dmq3.c` | BotState(40필드), BotGoalType(16종), BotAIState(17상태), BotGoalSystem, BotStateMachine, BotCombat |
+| `BotAI/BotTeamAI.cs` | `ai_team.c`, `ai_cmd.c`, `ai_script.c`, `ai_script_actions.c` | BotScriptSystem, BotTeamAI, BotCommands |
 | `BotAI/PathFinding.cs` | `be_aas_*.c` | AAS → Unity NavMesh 브릿지, 경로 계획 API |
 
 ### Layer 9 — 서버 게임 로직 ✅
@@ -105,47 +106,46 @@
 | `Server/GameEntities.cs` | `g_target.c`, `g_trigger.c`, `g_utils.c`, `g_alarm.c` | G_Find/UseTargets, 12개 target_*, 11개 trigger_*, 8존 알람 시스템 |
 | `Server/GameTeam.cs` | `g_team.c`, `g_vote.c`, `g_referee.c`, `g_teammapdata.c`, `g_multiview.c` | 팀 관리, 투표 시스템(30s/50%+1), 심판, 목표 상태, 스폰 웨이브 |
 | `Server/GameProps.cs` | `g_props.c`, `g_svcmds.c`, `bg_tracemap.c`, `bg_animgroup.c`, `bg_sscript.c` | 건설/파괴 오브젝트, 서버 콘솔 명령, 높이맵, 사운드 스크립트 |
+| `Server/GameCharacterConfig.cs` | `g_character.c`, `g_config.c`, `g_mem.c`, `g_save.c` | 캐릭터 등록/업데이트, comp/pub 서버 프리셋 cvar 테이블 |
+| `Server/GameCommandsExt.cs` | `g_cmds_ext.c` | OSP 확장 명령 25개 (lock/unlock/pause/ready/topshots 등) |
+| `Server/GameServerUtils.cs` | `g_buddy_list.c`, `g_sv_entities.c`, `g_systemmsg.c` | WaypointSystem, ServerEntityPool(4096), SystemMessageSystem |
+| `Server/ServerConsoleCommands.cs` | `sv_ccmds.c`, `sv_bot.c`, `sv_net_chan.c` | 오퍼레이터 명령 14개, ServerBotIntegration, ServerNetChan XOR 인코딩 |
 
 ### Layer 10 — 클라이언트 게임(cgame) ✅
 
 | C# 파일 | 원본 C 파일 | 설명 |
 |---------|-----------|------|
-| `Client/CGameMain.cs` | `cg_main.c`, `cg_snapshot.c`, `cg_predict.c` | CGameState/CGameSharedState, 스냅샷 처리, pmove 클라이언트 예측 |
-| `Client/CGameEntities.cs` | `cg_ents.c`, `cg_players.c`, `cg_event.c` | CentityState, 엔티티 보간, 플레이어 애니메이션, 12개 이벤트 핸들러 |
-| `Client/CGameView.cs` | `cg_view.c`, `cg_draw.c`, `cg_marks.c`, `cg_localents.c` | 카메라/FOV/줌, HUD 시스템, 데칼 풀(500), 로컬 엔티티 풀(512) |
-| `Client/CGameWeapons.cs` | `cg_weapons.c`, `cg_effects.c` | WeaponRenderInfo[64], 머즐 플래시, 8종 폭발 ParticleSystem 효과 |
-| `Client/CGameAtmospheric.cs` | `cg_atmospheric.c`, `cg_particles.c`, `cg_trails.c` | 비/눈 ParticleSystem, 4096 파티클 풀, 128 LineRenderer 트레일 시스템 |
+| `Client/CGameMain.cs` | `cg_main.c`, `cg_snapshot.c`, `cg_predict.c` | CGameState, 스냅샷 처리, pmove 클라이언트 예측 |
+| `Client/CGameEntities.cs` | `cg_ents.c`, `cg_players.c`, `cg_event.c` | CentityState, 엔티티 보간, 12개 이벤트 핸들러, RaiseEntityEvent |
+| `Client/CGameView.cs` | `cg_view.c`, `cg_draw.c`, `cg_marks.c`, `cg_localents.c` | 카메라/FOV/줌, HUD, 데칼 풀(500), 로컬 엔티티 풀(512) |
+| `Client/CGameWeapons.cs` | `cg_weapons.c`, `cg_effects.c` | WeaponRenderInfo[64], 머즐 플래시, 8종 폭발 ParticleSystem |
+| `Client/CGameAtmospheric.cs` | `cg_atmospheric.c`, `cg_particles.c`, `cg_trails.c` | 비/눈 ParticleSystem, 4096 파티클 풀, 128 LineRenderer 트레일 |
 | `Client/CGameFireteams.cs` | `cg_fireteams.c`, `cg_fireteamoverlay.c`, `cg_commandmap.c`, `cg_consolecmds.c` | 화력팀 UI, 커맨드맵 아이콘, 콘솔 명령 등록 |
-| `Client/CGameUI.cs` | `cg_scoreboard.c`, `cg_limbopanel.c`, `cg_debriefing.c`, `cg_popupmessages.c` | 스코어보드, 림보패널(사망 후 스폰 선택), 디브리핑, 팝업 10-slot 링 버퍼 |
-| `Client/CGameServerCmds.cs` | `cg_servercmds.c`, `cg_playerstate.c`, `cg_spawn.c`, `cg_flamethrower.c`, `cg_multiview.c` | 서버 명령 디스패치, 데미지 피드백, 화염방사기 파티클, 4분할 관전 |
-| `Client/CGameExtra.cs` | `cg_character.c`, `cg_info.c`, `cg_window.c`, `cg_newDraw.c`, `cg_drawtools.c`, `cg_statsranksmedals.c` | 캐릭터/스킨, 로딩 화면, 4종 창 시스템, HUD 드로 툴, 훈장 표시 |
+| `Client/CGameUI.cs` | `cg_scoreboard.c`, `cg_limbopanel.c`, `cg_debriefing.c`, `cg_popupmessages.c` | 스코어보드, 림보패널, 디브리핑, 팝업 10-slot 링 버퍼 |
+| `Client/CGameServerCmds.cs` | `cg_servercmds.c`, `cg_playerstate.c`, `cg_spawn.c`, `cg_flamethrower.c`, `cg_multiview.c` | 서버 명령 디스패치, 데미지 피드백, 화염방사기, 4분할 관전 |
+| `Client/CGameExtra.cs` | `cg_character.c`, `cg_info.c`, `cg_window.c`, `cg_newDraw.c`, `cg_drawtools.c`, `cg_statsranksmedals.c` | 캐릭터/스킨, 로딩 화면, 창 시스템, HUD 드로 툴, 훈장 |
+| `Client/CGamePanels.cs` | `cg_panelhandling.c`, `cg_missionbriefing.c` | PanelButton 시스템, .campaign/.arena 파서, 미션 브리핑 |
+| `Client/CGameSound.cs` | `cg_sound.c` | cgame 사운드 스크립트 (4096 스크립트/8192 사운드), ScriptSpeaker 풀 |
 
 ### Layer 11 — UI 시스템 ✅
 
 | C# 파일 | 원본 C 파일 | 설명 |
 |---------|-----------|------|
-| `Client/UISystem.cs` | `ui_main.c`, `ui_shared.c`, `ui_atoms.c`, `ui_players.c`, `ui_gameinfo.c` | Stack 메뉴 내비게이션, .menu 스크립트 파서, 서버 브라우저, 아레나 정보 |
+| `Client/UISystem.cs` | `ui_main.c`, `ui_shared.c`, `ui_atoms.c`, `ui_players.c`, `ui_gameinfo.c` | Stack 메뉴 내비게이션, .menu 파서, 서버 브라우저, RaiseMenuDraw |
 
-### Layer 12 — 나머지 소규모 파일 ✅
-
-| C# 파일 | 원본 C 파일 | 설명 |
-|---------|-----------|------|
-| `Server/GameCommandsExt.cs` | `g_cmds_ext.c` | OSP 확장 명령 (lock/unlock/pause/ready/topshots/bottomshots/specinvite/speclock/players 등 25개) + 무기 정확도 랭킹 |
-| `Server/GameCharacterConfig.cs` | `g_character.c`, `g_config.c`, `g_mem.c`, `g_save.c` | 캐릭터 등록/업데이트, comp/pub 서버 프리셋 cvar 테이블, GameMemory 스텁 (g_save는 #ifdef SAVEGAME_SUPPORT로 원본 미사용) |
-| `Client/CGamePanels.cs` | `cg_panelhandling.c`, `cg_missionbriefing.c` | PanelButton 시스템, .campaign/.arena 파서, CampaignInfo/ArenaInfo, 미션 브리핑 이벤트 |
-| `Client/CGameSound.cs` | `cg_sound.c` | cgame 사운드 스크립트 시스템 (4096 스크립트 / 8192 사운드), 해시 테이블 조회, 버퍼드 큐, ScriptSpeaker 풀, AudioSystem 위임 |
-
-### Layer 13 — qcommon/서버/클라이언트/봇AI 잔여 파일 ✅
+### Layer 12–13 — qcommon/클라이언트/서버 잔여 ✅
 
 | C# 파일 | 원본 C 파일 | 설명 |
 |---------|-----------|------|
-| `Core/CommonSystem.cs` | `qcommon/common.c` | Com_Init/Frame/Error/Printf/DPrintf, 이벤트 루프, 커맨드라인 파싱, 설정 I/O, HashKey/Filter/StringContains, ModifyMsec, Quit/Shutdown |
-| `Server/GameServerUtils.cs` | `g_buddy_list.c`, `g_sv_entities.c`, `g_systemmsg.c` | WaypointSystem (G_SetWayPoint/ClearWayPoint), ServerEntityPool (MAX_SERVER_ENTITIES=4096, Init/Alloc/Get/Find), SystemMessageSystem (11가지 메시지, 15000ms 팀별 쿨다운, G_NeedEngineers/CheckForNeededClasses/CheckMenDown) |
-| `Server/ServerConsoleCommands.cs` | `sv_ccmds.c`, `sv_bot.c`, `sv_net_chan.c` | ServerConsoleCommands (14개 오퍼레이터 명령, SV_TransitionGameState 상태 머신), ServerBotIntegration (AllocateBotClient/FreeClient/InPVS/IsBot), ServerNetChan (XOR 인코딩/디코딩, SV_ENCODE_START=4, SV_DECODE_START=12) |
-| `Client/ClientSystem.cs` | `cl_keys.c`, `cl_console.c`, `cl_scrn.c`, `cl_ui.c` | KeySystem (ETKey 320키, SetBinding/GetBinding/OnKeyEvent, WriteBindings), ClientConsole (32768자 링버퍼, 32개 히스토리, 슬라이드 애니메이션), ClientScreen (AdjustFrom640, FillRect/DrawNamedPic 이벤트, DebugGraph 1024샘플), ClientUI (LAN/글로벌/즐겨찾기 서버 브라우저, PlayerPrefs 캐시) |
-| `Client/CinematicSystem.cs` | `cl_cin.c`, `cg_loadpanel.c`, `ui_loadpanel.c`, `ui_util.c` | CinematicSystem (MAX_VIDEO_HANDLES=16, VideoPlayer+RenderTexture, CIN_Play/Run/Stop/Draw/SetExtents/SetLooping), LoadPanel (LoadPanelData, UpdateProgress/SetMapName/SetCampaignData, OnRender 이벤트) |
-| `BotAI/BotTeamAI.cs` | `ai_team.c`, `ai_cmd.c`, `ai_script.c`, `ai_script_actions.c` | BotScriptSystem (.script 파일 파서, 이벤트/액션 체인, accum/if/setweapon/movetomarker), BotTeamAI (유효 리더 탐색, NavMesh 이동시간 정렬, 폭발물/건설 목표), BotCommands (AddressedToBot, MatchHelp/Camp/Patrol/GetItem/RushBase) |
-| `BotAI/BotCombatAI.cs` | `ai_dmgoal_mp.c`, `ai_dmnet_mp.c`, `ai_dmq3.c` | BotState (40개 필드), BotGoalType (16종), BotAIState (17상태), BotGoalSystem (클래스별 우선순위 테이블, FindGoal/CheckClassActions, FindNearestEnemy/FallenTeammate), BotStateMachine (17개 Node_* 핸들러), BotCombat (ChooseWeapon/OptimalRange/FaceTarget/UpdateInventory) |
+| `Core/CommonSystem.cs` | `common.c` | Com_Init/Frame/Error/Printf, 이벤트 루프, CvarSetDelegate 연결 |
+| `Client/ClientSystem.cs` | `cl_keys.c`, `cl_console.c`, `cl_scrn.c`, `cl_ui.c` | KeySystem(320키), ClientConsole(32768자 링버퍼), ClientScreen, ClientUI |
+| `Client/CinematicSystem.cs` | `cl_cin.c`, `cg_loadpanel.c`, `ui_loadpanel.c`, `ui_util.c` | CIN_Play/Run/Stop, VideoPlayer+RenderTexture, LoadPanel |
+
+### App 통합 ✅
+
+| C# 파일 | 설명 |
+|---------|------|
+| `App/ETGameManager.cs` | MonoBehaviour 통합 씬 — 모든 레이어 연결, SV_Frame→CL_Frame→BotAI 루프 |
 
 ---
 
@@ -161,13 +161,16 @@ Layer 3  완료:  ~16,400줄 (bg_pmove, bg_slidemove, bg_misc, cvar, g_weapon,
 Layer 4  완료:  ~5,000줄  (sv_main, sv_client, sv_snapshot, sv_game, sv_world, sv_init)
 Layer 5  완료:  ~2,500줄  (cl_main, cl_input, cl_parse, cl_cgame, cl_net_chan)
 Layer 6  완료:  ~4,000줄  (tr_bsp, tr_shader, tr_mesh, tr_animation)
-Layer 7  완료:  ~2,000줄  (g_bot, ai_main, ai_chat, be_aas_*)
+Layer 7  완료:  ~2,000줄  (g_bot, ai_main, ai_chat, be_aas_*, ai_team/cmd/script,
+                            ai_dmgoal_mp, ai_dmnet_mp, ai_dmq3)
 Layer 9  완료:  ~6,200줄  (g_main, g_active, g_client, g_spawn, g_missile, g_mover,
-                            g_script+actions, g_cmds, g_misc, g_match, g_session,
+                            g_script+actions, g_cmds+ext, g_misc, g_match, g_session,
                             g_stats, g_fireteams, g_antilag, g_target, g_trigger,
                             g_utils, g_alarm, g_team, g_vote, g_referee,
                             g_teammapdata, g_multiview, g_props, g_svcmds,
-                            bg_tracemap, bg_animgroup, bg_sscript)
+                            bg_tracemap, bg_animgroup, bg_sscript,
+                            g_character, g_config, g_mem, g_buddy_list,
+                            g_sv_entities, g_systemmsg, sv_ccmds, sv_bot, sv_net_chan)
 Layer 10 완료:  ~6,400줄  (cg_main, cg_snapshot, cg_predict, cg_ents, cg_players,
                             cg_event, cg_view, cg_draw, cg_marks, cg_localents,
                             cg_weapons, cg_effects, cg_atmospheric, cg_particles,
@@ -177,15 +180,11 @@ Layer 10 완료:  ~6,400줄  (cg_main, cg_snapshot, cg_predict, cg_ents, cg_play
                             cg_servercmds, cg_playerstate, cg_spawn,
                             cg_flamethrower, cg_multiview, cg_character,
                             cg_info, cg_window, cg_newDraw, cg_drawtools,
-                            cg_statsranksmedals)
+                            cg_statsranksmedals, cg_panelhandling,
+                            cg_missionbriefing, cg_sound)
 Layer 11 완료:  ~700줄   (ui_main, ui_shared, ui_atoms, ui_players, ui_gameinfo)
-Layer 12 완료:  ~4,400줄  (g_cmds_ext, g_character, g_config, g_mem, g_save(stub),
-                            cg_panelhandling, cg_missionbriefing, cg_sound)
-Layer 13 완료:  ~9,000줄  (common.c, g_buddy_list, g_sv_entities, g_systemmsg,
-                            sv_ccmds, sv_bot, sv_net_chan, cl_keys, cl_console,
-                            cl_scrn, cl_ui, cl_cin, cg_loadpanel, ui_loadpanel,
-                            ui_util, ai_team, ai_cmd, ai_script, ai_script_actions,
-                            ai_dmgoal_mp, ai_dmnet_mp, ai_dmq3)
+Layer 12 완료:  ~9,000줄  (common.c, cl_keys, cl_console, cl_scrn, cl_ui,
+                            cl_cin, cg_loadpanel, ui_loadpanel, ui_util)
 ────────────────────────────────────────────────────────────────────
 현재까지 포팅: ~64,400줄  (약 13.6%)
 렌더러 교체:   Unity URP로 완전 대체 (OpenGL → URP, tr_*.c 불필요)
@@ -197,16 +196,59 @@ Layer 13 완료:  ~9,000줄  (common.c, g_buddy_list, g_sv_entities, g_systemmsg
 
 ---
 
-## 남은 작업
+## C# 변환 중 주요 설계 결정
 
-| 항목 | 원본 | 메모 |
-|------|------|------|
-| `cg_polybus.c` | ~93줄 | 폴리곤 버스 (렌더러 대체로 불필요) |
-| `ui_syscalls.c` / `cg_syscalls.c` | syscall 브릿지 | Unity에서 직접 호출로 대체 완료 |
+| 원본 C 패턴 | C# 대체 방식 |
+|-------------|-------------|
+| `Vector3` (xyz float 분리) | `PlayerState`: `Origin0/1/2`, `Velocity0/1/2` 개별 float (NetField 직렬화 호환) |
+| `trajectory_t.trBase` (vec3_t) | `Trajectory`: `TrBase0/TrBase1/TrBase2` 개별 float |
+| `angles2` (vec3_t 배열) | `EntityState`: `Angles20/Angles21/Angles22` 개별 float |
+| `ps.powerups` (int[16], 인덱스=만료시간) | `PlayerState.Powerups[PW_*] != 0` (비트마스크 아님) |
+| VM_Call cgvm 경계 | C# `event Action<>` 델리게이트 — 선언 클래스 내 `Raise*()` 헬퍼로 외부 발사 |
+| 순환 어셈블리 의존성 | `CommonSystem` 정적 델리게이트 주입 (ET.Core ↔ ET.Game 격리) |
+| `NetChannel.Transmit(data, len)` | `Transmit(int length, byte[] data)` — 인자 순서 주의 |
+| `Touch` 콜백 (self, other, activator) | `Action<GEntity, GEntity>` (2인자) |
+| AAS 경로탐색 | Unity `NavMesh.CalculatePath(src, dst, mask, NavMeshPath)` — bool 반환, path는 out 파라미터 |
+| ROQ 동영상 | Unity `VideoPlayer` + `RenderTexture` |
 
 ---
 
-## Unity 프로젝트 설정 가이드
+## 남은 작업
+
+### 즉시 필요 (런타임 실행 전)
+
+| 항목 | 설명 |
+|------|------|
+| **리소스 파일 배치** | `howToSetResourceFiles.md` 참고 — ET 원본 PK3에서 추출한 .bsp/.md3/.mds/.shader/.wav 파일을 `StreamingAssets/etmain/` 또는 `Resources/` 에 배치 |
+| **Unity 씬 설정** | `ETGameManager` MonoBehaviour를 씬에 배치, `MaxClients`/`MapName` Inspector 설정 |
+| **NavMesh 베이크** | 봇 AI가 작동하려면 맵 지오메트리 기반으로 NavMesh 베이크 필요 |
+| **Input System 마이그레이션** | Unity Input Manager deprecated 경고 → `com.unity.inputsystem` 패키지로 이전 권장 |
+
+### 기능 검증 (런타임 테스트)
+
+| 항목 | 검증 방법 |
+|------|----------|
+| 플레이어 이동/충돌 | `PlayerMovement.Pmove()` 호출 후 Physics 충돌 확인 |
+| 스냅샷 직렬화 | 로컬 루프백으로 서버↔클라이언트 패킷 왕복 테스트 |
+| 무기 발사 | `WeaponSystem.FireWeaponFromCmd()` → `DamageSystem.G_Damage()` 체인 |
+| 봇 AI 이동 | NavMesh 베이크 후 BotMain.BotAI_Think() 프레임 루프 |
+| BSP 렌더링 | BspImporter로 .bsp 임포트 → Unity 씬에 메시 표시 |
+| 오디오 재생 | `AudioSystem.S_RegisterSound()` → WAV 파일 로드 확인 |
+| 애니메이션 | MdsImporter로 .mds 임포트 → SkinnedMeshRenderer 본 구동 |
+
+### 장기 과제
+
+| 항목 | 설명 |
+|------|------|
+| WebAssembly 빌드 검증 | Unity WebGL(WASM) 빌드 — `System.Net.Sockets` 미지원으로 네트워크 레이어 대체 필요 (WebSockets/WebRTC) |
+| 실제 네트워크 멀티플레이 | UDP → WebSocket/WebRTC 브릿지 구현 (WebGL 환경) |
+| 셰이더 변환 | ET .shader → URP ShaderGraph 자동 변환 또는 수동 매핑 |
+| Input System 완전 이전 | `ClientInput.cs`의 `Input.GetAxis` 계열 → `InputSystem.ReadValue<>` |
+| 서버 월드(sv_world.c) | AABB 공간 쿼리가 스텁 수준 — Unity PhysX OverlapBox로 구현 필요 |
+
+---
+
+## Unity 프로젝트 설정
 
 ```
 권장 버전: Unity 6 (6000.0.x LTS) 또는 Unity 2022.3 LTS
@@ -214,9 +256,23 @@ Layer 13 완료:  ~9,000줄  (common.c, g_buddy_list, g_sv_entities, g_systemmsg
 API 호환성: .NET Standard 2.1
 ```
 
-Assembly definition 체인:
+### Assembly definition 체인
+
 ```
 ET.Core → ET.Network → ET.Game → ET.Server
                                → ET.Client
                                → ET.BotAI
+          ET.App (최상위, 모두 참조)
 ```
+
+### 컴파일 확인 커밋 이력
+
+| 커밋 | 내용 |
+|------|------|
+| `d03ad08` | 1차 에러 배치 수정 (순환 의존, Touch 람다, PS.Velocity, NetworkManager 제거 등) |
+| `256960f` | 2차 에러 배치 수정 (TrBase 개별 float, ServerConsoleCommands, CGameAtmospheric, UISystem 이벤트 경계 등) |
+| `71533eb` | BotState 중복 타입명, altSwitchAnim 미사용 변수, s_mapLoaded 미사용 필드, CS0067 경고 정리 |
+| `afe5074` | BotAI 에러 수정 (using ET.Core, RaiseBotChat, GetBotState, AllBotStates, NavMeshPath, Angles22 등) |
+| `a73da65` | PS.Powerups 배열 인덱스 접근으로 수정 (비트마스크 오류) |
+| `de95d2c` | ETGameManager CvarSetDelegate 람다 감싸기 |
+| `b9e9698` | Renderer _ofsEnd 필드 위치 수정, RemapEtBoneRotation 추가 |

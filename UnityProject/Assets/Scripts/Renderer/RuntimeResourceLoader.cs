@@ -333,7 +333,11 @@ public static class RuntimeResourceLoader
             // Fallback: Standard/Lit material with a texture matching the shader path
             mat = new Material(FindUnityShader(false)) { name = shaderName };
             var tex = LoadTexture(shaderName);
-            if (tex != null) mat.mainTexture = tex;
+            if (tex != null)
+            {
+                mat.mainTexture = tex;
+                if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
+            }
         }
 
         // Apply lightmap to UV2 if the surface references one

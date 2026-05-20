@@ -73,7 +73,14 @@ public class EtShader
         bool isTransparent = Translucent || HasBlendOrAlphaStage();
 
         if (Sky)
-            mat = new Material(Shader.Find("Skybox/6 Sided") ?? Shader.Find("Standard"));
+        {
+            // ET sky surfaces need a background-queue opaque material.
+            // Skybox/6 Sided has no _MainTex so we use Standard/Lit instead
+            // and push to the background queue as a visual placeholder.
+            mat = new Material(Shader.Find("Universal Render Pipeline/Lit")
+                            ?? Shader.Find("Standard"));
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Background;
+        }
         else if (isTransparent)
         {
             mat = new Material(Shader.Find("Universal Render Pipeline/Lit")
@@ -100,7 +107,22 @@ public class EtShader
         if (!string.IsNullOrEmpty(mainTexPath))
         {
             var tex = RuntimeResourceLoader.LoadTexture(mainTexPath);
-            if (tex != null) mat.mainTexture = tex;
+            if (tex != null)
+            {
+                mat.mainTexture = tex;
+                // URP uses _BaseMap; set it explicitly to be safe
+                if (mat.HasProperty("_BaseMap"))
+                    mat.SetTexture("_BaseMap", tex);
+            }
+            else
+            {
+                Debug.LogWarning($"[ShaderParser] '{Name}': texture not loaded: '{mainTexPath}'");
+            }
+        }
+        else if (Stages.Count > 0)
+        {
+            Debug.LogWarning($"[ShaderParser] '{Name}': no texture map found in {Stages.Count} stages " +
+                             $"(maps: {string.Join(", ", Stages.ConvertAll(s => s.Map ?? "null"))})");
         }
 
         return mat;
@@ -170,8 +192,11 @@ public class EtShader
     {
         foreach (var stage in Stages)
         {
-            if (!stage.IsLightmap && !string.IsNullOrEmpty(stage.Map))
-                return stage.Map;
+            if (stage.IsLightmap) continue;
+            if (string.IsNullOrEmpty(stage.Map)) continue;
+            // Skip ET engine built-in virtual textures — no file in PK3
+            if (stage.Map.StartsWith("$") || stage.Map.StartsWith("*")) continue;
+            return stage.Map;
         }
         return null;
     }

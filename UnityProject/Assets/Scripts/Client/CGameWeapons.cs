@@ -56,58 +56,69 @@ namespace ET.Client
         private static Vector3 ETToUnity(Vector3 et)
             => new Vector3(-et.y, et.z, et.x);
 
+        // ET first-person (viewmodel) paths use a "v_" prefix.
+        // The fallback in LoadMd3 also tries v_<name> automatically, but supplying
+        // the correct viewmodel path here avoids the double lookup.
         private static string ModelPath(int wp)
         {
             switch (wp)
             {
                 case GameConst.WP_KNIFE:
-                    return "models/weapons2/knife/knife.md3";
+                    return "models/weapons2/knife/v_knife.md3";
                 case GameConst.WP_LUGER:
-                case GameConst.WP_COLT:
                 case GameConst.WP_SILENCER:
+                    return "models/weapons2/luger/v_luger.md3";
+                case GameConst.WP_COLT:
                 case GameConst.WP_SILENCED_COLT:
+                    return "models/weapons2/colt/v_colt.md3";
                 case GameConst.WP_AKIMBO_LUGER:
-                case GameConst.WP_AKIMBO_COLT:
                 case GameConst.WP_AKIMBO_SILENCEDLUGER:
+                    return "models/weapons2/akimbo_luger/v_akimbo_luger.md3";
+                case GameConst.WP_AKIMBO_COLT:
                 case GameConst.WP_AKIMBO_SILENCEDCOLT:
-                    return "models/weapons2/luger/luger.md3";
+                    return "models/weapons2/akimbo_colt/v_akimbo_colt.md3";
                 case GameConst.WP_MP40:
+                    return "models/weapons2/mp40/v_mp40.md3";
                 case GameConst.WP_THOMPSON:
-                    return "models/weapons2/mp40/mp40.md3";
-                case GameConst.WP_KAR98:
-                case GameConst.WP_GARAND:
-                case GameConst.WP_CARBINE:
-                case GameConst.WP_K43:
-                case GameConst.WP_GARAND_SCOPE:
-                case GameConst.WP_K43_SCOPE:
-                    return "models/weapons2/mauser/mauser.md3";
-                case GameConst.WP_PANZERFAUST:
-                case GameConst.WP_GPG40:
-                case GameConst.WP_M7:
-                    return "models/weapons2/panzerfaust/pf.md3";
-                case GameConst.WP_FLAMETHROWER:
-                    return "models/weapons2/flamethrower/flamethrower.md3";
-                case GameConst.WP_GRENADE_LAUNCHER:
-                case GameConst.WP_GRENADE_PINEAPPLE:
-                    return "models/weapons2/grenade/grenade.md3";
-                case GameConst.WP_MORTAR:
-                case GameConst.WP_MORTAR_SET:
-                    return "models/weapons2/mortar/mortar.md3";
-                case GameConst.WP_DYNAMITE:
-                case GameConst.WP_SATCHEL:
-                case GameConst.WP_SATCHEL_DET:
-                    return "models/weapons2/dynamite/dynamite.md3";
+                    return "models/weapons2/thompson/v_thompson.md3";
                 case GameConst.WP_STEN:
+                    return "models/weapons2/sten/v_sten.md3";
                 case GameConst.WP_FG42:
                 case GameConst.WP_FG42SCOPE:
+                    return "models/weapons2/fg42/fg42.md3";
                 case GameConst.WP_MOBILE_MG42:
                 case GameConst.WP_MOBILE_MG42_SET:
-                    return "models/weapons2/sten/sten.md3";
-                // No separate WP_SNIPERRIFLE constant in GameConst; scoped variants cover sniper role.
+                    return "models/weapons2/mg42/v_mg42.md3";
+                case GameConst.WP_KAR98:
+                case GameConst.WP_K43:
+                case GameConst.WP_K43_SCOPE:
+                    return "models/weapons2/kar98/v_kar98.md3";
+                case GameConst.WP_GARAND:
+                case GameConst.WP_GARAND_SCOPE:
+                case GameConst.WP_CARBINE:
+                    return "models/weapons2/garand/v_garand.md3";
+                case GameConst.WP_PANZERFAUST:
+                    return "models/weapons2/panzerfaust/v_panzerfaust.md3";
+                case GameConst.WP_GPG40:
+                case GameConst.WP_M7:
+                    return "models/weapons2/gpg40/v_gpg40.md3";
+                case GameConst.WP_FLAMETHROWER:
+                    return "models/weapons2/flamethrower/v_flamethrower.md3";
+                case GameConst.WP_GRENADE_LAUNCHER:
+                case GameConst.WP_GRENADE_PINEAPPLE:
+                    return "models/weapons2/grenade/v_grenade.md3";
+                case GameConst.WP_MORTAR:
+                case GameConst.WP_MORTAR_SET:
+                    return "models/weapons2/mortar/v_mortar.md3";
+                case GameConst.WP_DYNAMITE:
+                    return "models/weapons2/dynamite/v_dynamite.md3";
+                case GameConst.WP_SATCHEL:
+                case GameConst.WP_SATCHEL_DET:
+                    return "models/weapons2/satchel/v_satchel.md3";
                 case GameConst.WP_LOCKPICK:
-                    return "models/weapons2/sniper/sniper.md3";
+                    return "models/weapons2/pliers/v_pliers.md3";
                 default:
-                    return "models/weapons2/crowbar/crowbar.md3";
+                    return "models/weapons2/knife/v_knife.md3";
             }
         }
 

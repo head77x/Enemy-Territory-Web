@@ -747,6 +747,9 @@ namespace ET.Server
             ps.EFlags  = 0;
             ps.Gravity = _cvGravity?.IntValue ?? 800;
             ps.Speed   = _cvSpeed?.IntValue   ?? 320;
+            ps.RunSpeedScale    = 1.0f;
+            ps.SprintSpeedScale = 1.1f;
+            ps.CrouchSpeedScale = 0.5f;
 
             int maxHp = MaxHealthForClient(client);
             ps.Stats[GameConst.STAT_HEALTH]       = (short)maxHp;

@@ -832,9 +832,10 @@ namespace ET.Server
             if (best != null)
             {
                 origin = best.Origin;
-                // Match ET spawn.c: move up 9 units so the player bottom
-                // is clearly above the floor for the first ground trace.
-                origin.z += 9f;
+                // bbox Mins.z = -24, so we need offset > 24 to place the bbox bottom
+                // above the floor.  PhysX AllSolid blocks all movement when inside
+                // solid, unlike the original ET engine which handles shallow overlaps.
+                origin.z += 36f;
                 angles = best.Angles;
             }
 

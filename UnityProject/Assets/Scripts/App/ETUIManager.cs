@@ -384,6 +384,13 @@ namespace ET.App
 
             if (ETGameManager.LocalPlayerActive)
             {
+                // Crosshair
+                float cx = 320f, cy = 240f, arm = 7f, thick = 1.5f;
+                DrawColorBox(new Rect(cx - arm, cy - thick, arm * 2f, thick * 2f),
+                    new Color(1f, 1f, 1f, 0.85f));
+                DrawColorBox(new Rect(cx - thick, cy - arm, thick * 2f, arm * 2f),
+                    new Color(1f, 1f, 1f, 0.85f));
+
                 // Show live player state directly from ServerGameLogic
                 var gc = ET.Server.ServerGameLogic.Clients[0];
                 if (gc != null)
@@ -391,16 +398,19 @@ namespace ET.App
                     var ps = gc.PS;
                     int hp    = ps.Stats[ET.Game.GameConst.STAT_HEALTH];
                     int maxHp = 100;
-                    DrawFilledBar(10, 440, 120, 14, HealthColor, 0.25f,
+
+                    // Health bar — bottom-left with dark background
+                    DrawColorBox(new Rect(8, 434, 130, 22), new Color(0, 0, 0, 0.55f));
+                    DrawFilledBar(10, 436, 126, 18, HealthColor, 0.20f,
                         maxHp > 0 ? Mathf.Clamp01((float)hp / maxHp) : 0f);
-                    GUI.Label(new Rect(10, 440, 120, 14), $"HP  {hp}", _smallStyle);
+                    GUI.Label(new Rect(10, 436, 126, 18), $"HP  {hp}", _smallStyle);
 
-                    GUI.Label(new Rect(4, 20, 300, 14),
-                        $"WASD=move  Mouse=look  LMB=fire  ESC=menu", _smallStyle);
-
-                    // Position debug
-                    GUI.Label(new Rect(4, 36, 300, 14),
-                        $"pos ({ps.Origin0:F0}, {ps.Origin1:F0}, {ps.Origin2:F0})", _smallStyle);
+                    // Info strip top-left
+                    DrawColorBox(new Rect(2, 18, 310, 34), new Color(0, 0, 0, 0.45f));
+                    GUI.Label(new Rect(6, 20, 306, 14),
+                        "WASD=move  Mouse=look  Space=jump  ESC=menu", _smallStyle);
+                    GUI.Label(new Rect(6, 34, 306, 14),
+                        $"pos ({ps.Origin0:F0},{ps.Origin1:F0},{ps.Origin2:F0})", _smallStyle);
                 }
                 return;
             }

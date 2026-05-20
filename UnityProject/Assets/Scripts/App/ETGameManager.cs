@@ -54,14 +54,17 @@ namespace ET.App
         private float _camPitch;
         private const float MouseSens = 0.15f;
 
-        // One-shot diagnostic flag for DriveLocalPlayer
-
         // Pmove reused each server frame (avoids per-frame alloc)
         private readonly PlayerMovement _pm = new PlayerMovement();
         private PmoveInput _pmInput;
 
         // ET content mask: CONTENTS_SOLID | CONTENTS_PLAYERCLIP | CONTENTS_BODY
         private const int MASK_PLAYERSOLID = 1 | 0x10000 | 0x2000;
+
+        // Viewmodel (first-person weapon) — dedicated depth-only camera + mesh
+        private const int ViewmodelLayer = 30;
+        private Camera    _viewmodelCam;
+        private Transform _viewmodelRoot;
 
         // ----------------------------------------------------------------
         // MonoBehaviour lifecycle
@@ -274,6 +277,8 @@ namespace ET.App
             LocalPlayerActive = true;
             Debug.Log($"[ETGameManager] Local player spawned at " +
                       $"ET({ps.Origin0:F0},{ps.Origin1:F0},{ps.Origin2:F0})");
+
+            SetupViewmodel();
         }
 
         private void Update()
@@ -319,6 +324,61 @@ namespace ET.App
         /// and applies the resulting PlayerState to the main camera.
         /// Called every render frame when the local player is active and no menu is open.
         /// </summary>
+        /// <summary>
+        /// Creates a depth-only secondary camera and a placeholder weapon mesh
+        /// for the first-person viewmodel.  Layer 30 is used exclusively so the
+        /// main camera never renders the weapon (avoids z-fighting with walls).
+        /// </summary>
+        private void SetupViewmodel()
+        {
+            var cam = Camera.main;
+            if (cam == null) return;
+
+            // Exclude viewmodel layer from main camera
+            cam.cullingMask &= ~(1 << ViewmodelLayer);
+
+            // Viewmodel camera — renders ONLY the weapon, on top of the world
+            var vmGo = new GameObject("ViewmodelCamera");
+            _viewmodelCam = vmGo.AddComponent<Camera>();
+            _viewmodelCam.clearFlags    = CameraClearFlags.Depth;
+            _viewmodelCam.cullingMask   = 1 << ViewmodelLayer;
+            _viewmodelCam.nearClipPlane = 0.5f;
+            _viewmodelCam.farClipPlane  = 200f;
+            _viewmodelCam.fieldOfView   = 70f;
+            _viewmodelCam.depth         = cam.depth + 1;
+
+            // Weapon root parented to the viewmodel camera
+            _viewmodelRoot = new GameObject("ViewWeaponRoot").transform;
+            _viewmodelRoot.SetParent(vmGo.transform);
+
+            // Build a simple gun shape from two cubes (body + barrel)
+            CreateWeaponPart(_viewmodelRoot,
+                localPos: new Vector3(8f, -8f, 24f),
+                localRot: Quaternion.Euler(0f, -10f, 0f),
+                localScale: new Vector3(3f, 3f, 18f),   // barrel
+                color: new Color(0.25f, 0.25f, 0.25f));
+
+            CreateWeaponPart(_viewmodelRoot,
+                localPos: new Vector3(8f, -11f, 18f),
+                localRot: Quaternion.Euler(-10f, -10f, 0f),
+                localScale: new Vector3(3f, 5f, 8f),    // grip
+                color: new Color(0.20f, 0.15f, 0.10f));
+        }
+
+        private static void CreateWeaponPart(Transform parent, Vector3 localPos,
+            Quaternion localRot, Vector3 localScale, Color color)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.layer = ViewmodelLayer;
+            UnityEngine.Object.Destroy(go.GetComponent<Collider>());
+            go.GetComponent<MeshRenderer>().material =
+                new Material(Shader.Find("Standard")) { color = color };
+            go.transform.SetParent(parent);
+            go.transform.localPosition = localPos;
+            go.transform.localRotation = localRot;
+            go.transform.localScale    = localScale;
+        }
+
         private void DriveLocalPlayer()
         {
             var gc = ServerGameLogic.Clients[LocalClientNum];
@@ -387,11 +447,21 @@ namespace ET.App
                 cam.transform.position = new Vector3(-ps.Origin1, eyeZ, ps.Origin0);
                 cam.transform.rotation = Quaternion.Euler(_camPitch, _camYaw, 0f);
             }
+
+            // Keep viewmodel camera locked to main camera
+            if (_viewmodelCam != null && cam != null)
+            {
+                _viewmodelCam.transform.position = cam.transform.position;
+                _viewmodelCam.transform.rotation = cam.transform.rotation;
+            }
         }
 
         private void OnDestroy()
         {
             LocalPlayerActive = false;
+
+            if (_viewmodelCam != null)
+                Destroy(_viewmodelCam.gameObject);
 
             ServerInit.OnSpawnServer -= OnMapSpawn;
             ServerMain.OnGameRunFrame       -= OnGameRunFrame;

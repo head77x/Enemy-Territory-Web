@@ -340,13 +340,22 @@ public static class RuntimeResourceLoader
         else
         {
             // Fallback: Standard/Lit material with a texture matching the shader path
-            mat = new Material(FindUnityShader(false)) { name = shaderName };
+            var unityShader = FindUnityShader(false);
+            mat = new Material(unityShader) { name = shaderName };
             var tex = LoadTexture(shaderName);
             if (tex != null)
             {
                 mat.mainTexture = tex;
                 if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
             }
+
+            // Diagnostic: log material state for fallback path
+            Debug.Log($"[MatDiag] FALLBACK '{shaderName}' | " +
+                      $"unityShader={(unityShader != null ? unityShader.name : "NULL")} | " +
+                      $"tex={(tex != null ? tex.name + " " + tex.width + "x" + tex.height : "NULL")} | " +
+                      $"mainTex={(mat.mainTexture != null ? mat.mainTexture.name : "NULL")} | " +
+                      $"hasBaseMap={mat.HasProperty("_BaseMap")} | " +
+                      $"baseMap={(mat.HasProperty("_BaseMap") && mat.GetTexture("_BaseMap") != null ? "SET" : "NULL")}");
         }
 
         // Apply lightmap to UV2 if the surface references one

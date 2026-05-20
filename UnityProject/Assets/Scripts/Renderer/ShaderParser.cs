@@ -127,6 +127,15 @@ public class EtShader
                              $"(maps: {string.Join(", ", Stages.ConvertAll(s => s.Map ?? "null"))})");
         }
 
+        // Diagnostic: log material state
+        Debug.Log($"[MatDiag] SHADER '{Name}' | " +
+                  $"unityShader={mat.shader?.name ?? "NULL"} | " +
+                  $"texPath={(mainTexPath ?? "none")} | " +
+                  $"mainTex={(mat.mainTexture != null ? mat.mainTexture.name + " " + mat.mainTexture.width + "x" + mat.mainTexture.height : "NULL")} | " +
+                  $"hasBaseMap={mat.HasProperty("_BaseMap")} | " +
+                  $"baseMap={(mat.HasProperty("_BaseMap") && mat.GetTexture("_BaseMap") != null ? "SET" : "NULL")} | " +
+                  $"sky={Sky} transp={isTransparent} stages={Stages.Count}");
+
         return mat;
     }
 

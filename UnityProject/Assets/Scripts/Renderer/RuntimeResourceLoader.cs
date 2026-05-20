@@ -477,7 +477,7 @@ public static class RuntimeResourceLoader
         // Parent bones according to MDS hierarchy
         for (int b = 0; b < mds.NumBones; b++)
         {
-            int parentIdx = mds.Bones[b].ParentIndex;
+            int parentIdx = mds.Bones[b].Parent;
             if (parentIdx >= 0 && parentIdx < mds.NumBones)
                 boneTransforms[b].SetParent(boneTransforms[parentIdx], false);
             else
@@ -497,19 +497,38 @@ public static class RuntimeResourceLoader
             for (int v = 0; v < numVerts; v++)
             {
                 var mv  = surf.Vertices[v];
-                positions[v] = mv.Position;
-                normals[v]   = mv.Normal;
-                uvs[v]       = mv.UV;
+                normals[v] = mv.Normal;
+                uvs[v]     = mv.UV;
 
-                // Remap surface-local bone index → global bone index
-                int b0 = (mv.BoneIndex0 >= 0 && mv.BoneIndex0 < surf.BoneReferences.Length)
-                    ? surf.BoneReferences[mv.BoneIndex0] : 0;
-                int b1 = (mv.BoneIndex1 >= 0 && mv.BoneIndex1 < surf.BoneReferences.Length)
-                    ? surf.BoneReferences[mv.BoneIndex1] : 0;
+                // Bind-pose position: weighted sum of per-weight bone-local offsets
+                var pos = Vector3.zero;
+                if (mv.Weights != null)
+                    foreach (var w in mv.Weights)
+                        pos += w.BoneWeight * w.Offset;
+                positions[v] = pos;
+
+                // Remap surface-local bone indices → global bone indices (up to 2 influences)
+                var ws = mv.Weights;
+                int  b0 = 0, b1 = 0;
+                float wt0 = 1f, wt1 = 0f;
+                if (ws != null && ws.Length > 0)
+                {
+                    b0  = (ws[0].BoneIndex < surf.BoneReferences.Length)
+                          ? surf.BoneReferences[ws[0].BoneIndex] : 0;
+                    wt0 = ws[0].BoneWeight;
+                }
+                if (ws != null && ws.Length > 1)
+                {
+                    b1  = (ws[1].BoneIndex < surf.BoneReferences.Length)
+                          ? surf.BoneReferences[ws[1].BoneIndex] : 0;
+                    wt1 = ws[1].BoneWeight;
+                }
+                float wsum = wt0 + wt1;
+                if (wsum > 0f) { wt0 /= wsum; wt1 /= wsum; }
                 boneW[v] = new BoneWeight
                 {
-                    boneIndex0 = b0, weight0 = mv.BoneWeight0,
-                    boneIndex1 = b1, weight1 = 1f - mv.BoneWeight0,
+                    boneIndex0 = b0, weight0 = wt0,
+                    boneIndex1 = b1, weight1 = wt1,
                 };
             }
 

@@ -756,62 +756,36 @@ public static class RuntimeResourceLoader
         if (etShader == null && shaderKey != shaderName)
             etShader = ShaderParser.FindShaderRuntime(shaderName);   // fallback: try with extension
 
-        Material mat = etShader != null
-            ? etShader.ToMaterialRuntime()
-            : new Material(FindUnityShader(false)) { name = shaderName };
+        // Build a plain opaque material — ET shader definitions for model surfaces describe
+        // multi-pass envmap/glow effects (not useful in Unity) and their FindFirstTextureMap()
+        // often returns the envmap texture rather than the diffuse. Load the diffuse directly
+        // from the shader key (i.e. the MD3 surface name, which IS the texture path).
+        var opaqueSh = UnityEngine.Shader.Find(OPAQUE_SHADER)
+                    ?? UnityEngine.Shader.Find(FALLBACK_SHADER);
+        Material mat = new Material(opaqueSh) { name = shaderName };
 
-        // ET multi-stage shaders (diffuse + additive env/glow) cause ToMaterialRuntime() to mark
-        // the material transparent because HasBlendFuncStage() sees the LATER blend stages.
-        // For model surfaces the first stage is always opaque diffuse — force the material back to
-        // opaque so the Unity renderer doesn't discard it as a transparent skybox pass.
-        // Also rebuild if no ET shader was found, since FindUnityShader returns URP Lit which
-        // defaults to transparent-like settings with no texture set yet.
-        bool firstStageOpaque = etShader == null ||
-            (etShader.Stages.Count > 0 && string.IsNullOrEmpty(etShader.Stages[0].BlendFunc)) ||
-            etShader.Stages.Count == 0;
+        // Propagate NoCull/TwoSided from the ET shader definition if present.
+        if (etShader != null && (etShader.NoCull || etShader.TwoSided))
+            mat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
 
-        if (firstStageOpaque &&
-            mat.renderQueue >= (int)UnityEngine.Rendering.RenderQueue.Transparent)
+        // Load diffuse texture directly from shaderKey (extension-less path).
+        // LoadTexture probes .tga, .jpg, .png in order.
+        var tex = LoadTexture(shaderKey);
+        if (tex == null && shaderKey != shaderName)
+            tex = LoadTexture(shaderName);
+
+        if (tex == null)
         {
-            var opaqueShader = UnityEngine.Shader.Find(OPAQUE_SHADER)
-                            ?? UnityEngine.Shader.Find(FALLBACK_SHADER);
-            if (opaqueShader != null)
-            {
-                // Grab texture from _BaseMap (URP) or mainTexture before rebuilding
-                Texture prevTex = null;
-                if (mat.HasProperty("_BaseMap")) prevTex = mat.GetTexture("_BaseMap");
-                if (prevTex == null) prevTex = mat.mainTexture;
-
-                mat = new Material(opaqueShader) { name = shaderName };
-                if (prevTex != null)
-                {
-                    mat.mainTexture = prevTex;
-                    if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", prevTex);
-                }
-            }
+            string texDir = Path.GetDirectoryName(shaderKey)?.Replace('\\', '/') ?? "";
+            var available = ET.Core.FileSystem.FS_GetFileList(texDir, ".tga");
+            var availJpg  = ET.Core.FileSystem.FS_GetFileList(texDir, ".jpg");
+            Debug.LogWarning($"[RuntimeResourceLoader] Texture not found for shader '{shaderName}'. " +
+                $"Dir '{texDir}' has .tga: [{string.Join(", ", available)}] .jpg: [{string.Join(", ", availJpg)}]");
         }
-
-        if (mat.mainTexture == null &&
-            (mat.HasProperty("_BaseMap") ? mat.GetTexture("_BaseMap") == null : true))
+        else
         {
-            // Try shaderKey (no extension) first — LoadTexture will probe all extensions.
-            var tex = LoadTexture(shaderKey);
-            if (tex == null && shaderKey != shaderName)
-                tex = LoadTexture(shaderName);
-
-            if (tex == null)
-            {
-                string texDir = Path.GetDirectoryName(shaderKey)?.Replace('\\', '/') ?? "";
-                var available = ET.Core.FileSystem.FS_GetFileList(texDir, ".tga");
-                var availJpg  = ET.Core.FileSystem.FS_GetFileList(texDir, ".jpg");
-                Debug.LogWarning($"[RuntimeResourceLoader] Texture not found for shader '{shaderName}'. " +
-                    $"Dir '{texDir}' has .tga: [{string.Join(", ", available)}] .jpg: [{string.Join(", ", availJpg)}]");
-            }
-            else
-            {
-                mat.mainTexture = tex;
-                if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
-            }
+            mat.mainTexture = tex;
+            if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
         }
 
         // Disable PBR specular/reflections — model surfaces should render as flat diffuse.

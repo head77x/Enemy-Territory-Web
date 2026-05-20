@@ -42,9 +42,21 @@ public static class RuntimeResourceLoader
     {
         string bspPath = $"maps/{mapName}.bsp";
         byte[] data = FileSystem.FS_ReadFile(bspPath);
+
+        // Some PK3s store entries with uppercase extension; try alternate casing.
+        if (data == null)
+            data = FileSystem.FS_ReadFile($"maps/{mapName}.BSP");
+
         if (data == null)
         {
-            Debug.LogError($"[RuntimeResourceLoader] Cannot find BSP: {bspPath}");
+            // List all .bsp files found so the developer can see what IS available.
+            var found = FileSystem.FS_GetFileList("maps", ".bsp");
+            if (found.Length == 0)
+                Debug.LogError($"[RuntimeResourceLoader] Cannot find BSP '{bspPath}'. " +
+                               "No .bsp files found in any PK3/directory under 'maps/'.");
+            else
+                Debug.LogError($"[RuntimeResourceLoader] Cannot find BSP '{bspPath}'. " +
+                               $"Available maps: {string.Join(", ", found)}");
             return null;
         }
 

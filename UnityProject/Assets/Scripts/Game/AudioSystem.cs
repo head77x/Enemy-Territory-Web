@@ -50,9 +50,6 @@ namespace ET.Game
         private static AudioSource _musicIntroSource;
         private static AudioSource _musicLoopSource;
 
-        // Dedicated AudioListener attached to _audioRoot
-        private static AudioListener _listener;
-
         // Master volume (0..1)
         private static float _masterVolume = 1f;
 
@@ -73,9 +70,6 @@ namespace ET.Game
 
             _audioRoot = new GameObject("[AudioSystem]");
             UnityEngine.Object.DontDestroyOnLoad(_audioRoot);
-
-            // AudioListener — represents the "ear" in 3D space
-            _listener = _audioRoot.AddComponent<AudioListener>();
 
             // Pre-fill the pool
             for (int i = 0; i < POOL_SIZE; i++)

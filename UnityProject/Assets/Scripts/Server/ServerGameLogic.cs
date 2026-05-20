@@ -893,8 +893,7 @@ namespace ET.Server
             float.TryParse(parts[2], System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out float z);
 
-            // ET: X=forward Y=left Z=up → Unity: new Vector3(-et.y, et.z, et.x)
-            value = new Vector3(-y, z, x);
+            value = new Vector3(x, y, z);
             return true;
         }
 
@@ -1010,8 +1009,6 @@ namespace ET.Server
                     ent.S.EType = (int)EntityType.Mover;
                     break;
                 default:
-                    // Unknown class; leave in place but don't activate
-                    Debug.LogWarning($"[ServerGameLogic] G_CallSpawn: unknown class '{ent.ClassName}'");
                     break;
             }
         }

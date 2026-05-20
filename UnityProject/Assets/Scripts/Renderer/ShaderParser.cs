@@ -531,8 +531,7 @@ public static class ShaderParser
             Debug.Log($"[ShaderParser] Loaded {_runtimeCache.Count} ET shader definitions at runtime.");
         }
 
-        if (!_runtimeCache.TryGetValue(name, out var result))
-            Debug.Log($"[ShaderParser] No shader def for '{name}', using texture fallback.");
+        _runtimeCache.TryGetValue(name, out var result);
         return result;
     }
 

@@ -63,6 +63,49 @@ public class EtShader
     public bool   Portal;
     public List<EtShaderStage> Stages = new();
 
+    // ------------------------------------------------------------------
+    // ToMaterialRuntime — creates a Unity Material at runtime.
+    // Textures are loaded from etmain via RuntimeResourceLoader.
+    // ------------------------------------------------------------------
+    public Material ToMaterialRuntime()
+    {
+        Material mat;
+        bool isTransparent = Translucent || HasBlendOrAlphaStage();
+
+        if (Sky)
+            mat = new Material(Shader.Find("Skybox/6 Sided") ?? Shader.Find("Standard"));
+        else if (isTransparent)
+        {
+            mat = new Material(Shader.Find("Universal Render Pipeline/Lit")
+                            ?? Shader.Find("Standard"));
+            // Built-in RP transparency keywords
+            mat.SetFloat("_Mode", 3);
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetInt("_ZWrite", 0);
+            mat.EnableKeyword("_ALPHABLEND_ON");
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        }
+        else
+        {
+            mat = new Material(Shader.Find("Universal Render Pipeline/Lit")
+                            ?? Shader.Find("Standard"));
+        }
+
+        mat.name = Name;
+        if (NoCull || TwoSided)
+            mat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+
+        string mainTexPath = FindFirstTextureMap();
+        if (!string.IsNullOrEmpty(mainTexPath))
+        {
+            var tex = RuntimeResourceLoader.LoadTexture(mainTexPath);
+            if (tex != null) mat.mainTexture = tex;
+        }
+
+        return mat;
+    }
+
 #if UNITY_EDITOR
     // ------------------------------------------------------------------
     // Convert this shader to a Unity Material.
@@ -309,6 +352,35 @@ public static class ShaderParser
         return null;
     }
 #endif
+
+    // ------------------------------------------------------------------
+    // FindShaderRuntime — searches etmain .shader files via FileSystem.
+    // Called at runtime by RuntimeResourceLoader.
+    // ------------------------------------------------------------------
+    private static readonly Dictionary<string, EtShader> _runtimeCache =
+        new Dictionary<string, EtShader>(StringComparer.OrdinalIgnoreCase);
+    private static bool _runtimeCacheLoaded;
+
+    public static EtShader FindShaderRuntime(string name)
+    {
+        if (!_runtimeCacheLoaded)
+        {
+            _runtimeCacheLoaded = true;
+            string[] files = ET.Core.FileSystem.FS_GetFileList("scripts", ".shader");
+            foreach (string f in files)
+            {
+                string text = ET.Core.FileSystem.FS_ReadFileText($"scripts/{f}");
+                if (string.IsNullOrEmpty(text)) continue;
+                foreach (var kv in ParseFile(text))
+                    if (!_runtimeCache.ContainsKey(kv.Key))
+                        _runtimeCache[kv.Key] = kv.Value;
+            }
+            Debug.Log($"[ShaderParser] Loaded {_runtimeCache.Count} ET shader definitions at runtime.");
+        }
+
+        _runtimeCache.TryGetValue(name, out var result);
+        return result;
+    }
 
     // ------------------------------------------------------------------
     // ParseStage — parse one { ... } stage block

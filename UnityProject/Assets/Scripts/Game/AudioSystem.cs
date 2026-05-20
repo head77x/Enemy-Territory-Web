@@ -56,6 +56,10 @@ namespace ET.Game
         // Master volume (0..1)
         private static float _masterVolume = 1f;
 
+        // Wired by ETGameManager (Assembly-CSharp → ET.Game delegate injection)
+        // to avoid circular assembly reference ET.Game → Assembly-CSharp.
+        public static Func<string, AudioClip> RuntimeAudioLoader;
+
         // ----------------------------------------------------------------
         // Initialisation — called lazily on first use
         // ----------------------------------------------------------------
@@ -109,8 +113,12 @@ namespace ET.Game
             if (_nameToHandle.TryGetValue(key, out int existing))
                 return existing;
 
-            // Try to load from Resources (Unity requires no extension in the path)
+            // 1. Try Resources folder (pre-imported assets)
             AudioClip clip = Resources.Load<AudioClip>(key);
+
+            // 2. Fallback: runtime loader (wired by ETGameManager via RuntimeAudioLoader)
+            if (clip == null && RuntimeAudioLoader != null)
+                clip = RuntimeAudioLoader(name);
 
             // Store even if null — preserves handle stability (0 = invalid)
             _clips.Add(clip);
@@ -119,7 +127,7 @@ namespace ET.Game
             _nameToHandle[key] = handle;
 
             if (clip == null)
-                Debug.LogWarning($"[AudioSystem] S_RegisterSound: failed to load '{name}' (Resources key: '{key}')");
+                Debug.LogWarning($"[AudioSystem] S_RegisterSound: not found '{name}'");
 
             return handle;
         }
@@ -214,9 +222,11 @@ namespace ET.Game
             S_StopBackgroundTrack();
 
             AudioClip introClip = string.IsNullOrEmpty(intro) ? null
-                                : Resources.Load<AudioClip>(NormaliseName(intro));
+                                : (Resources.Load<AudioClip>(NormaliseName(intro))
+                                   ?? RuntimeAudioLoader?.Invoke(intro));
             AudioClip loopClip  = string.IsNullOrEmpty(loop)  ? null
-                                : Resources.Load<AudioClip>(NormaliseName(loop));
+                                : (Resources.Load<AudioClip>(NormaliseName(loop))
+                                   ?? RuntimeAudioLoader?.Invoke(loop));
 
             if (loopClip == null && introClip == null)
             {

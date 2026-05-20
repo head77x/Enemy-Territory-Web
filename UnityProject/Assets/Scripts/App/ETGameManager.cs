@@ -80,17 +80,46 @@ namespace ET.App
 
             // ---- Audio ----
             AudioSystem.S_SetMasterVolume(MasterVolume);
+
+            // ---- Wire runtime resource loaders (breaks ET.Game → Assembly-CSharp dep) ----
+            AudioSystem.RuntimeAudioLoader = RuntimeResourceLoader.LoadAudioClip;
         }
 
         /// <summary>
         /// Server/client startup and bot spawning.  Subscriptions to cross-system
         /// events are established here so they can be cleanly removed in OnDestroy.
         /// </summary>
+        // Root transform that holds the loaded BSP scene.
+        // Destroyed and rebuilt each time a new map is loaded.
+        private Transform _mapRoot;
+
+        private void OnMapSpawn(string mapName)
+        {
+            // Destroy previous map geometry
+            if (_mapRoot != null)
+            {
+                Destroy(_mapRoot.gameObject);
+                RuntimeResourceLoader.ClearCaches();
+            }
+
+            var go = RuntimeResourceLoader.LoadBspScene(mapName, transform);
+            _mapRoot = go != null ? go.transform : null;
+
+            if (go == null)
+                Debug.LogError($"[ETGameManager] Failed to load BSP for map '{mapName}'.");
+            else
+                Debug.Log($"[ETGameManager] Map '{mapName}' loaded into scene.");
+        }
+
         private void Start()
         {
             if (StartServer)
             {
                 ServerInit.SV_Init();
+
+                // Subscribe BEFORE SV_SpawnServer so the BSP is loaded when the event fires
+                ServerInit.OnSpawnServer += OnMapSpawn;
+
                 ServerInit.SV_SpawnServer(MapName);
 
                 // Subscribe server events
@@ -165,6 +194,7 @@ namespace ET.App
         /// </summary>
         private void OnDestroy()
         {
+            ServerInit.OnSpawnServer -= OnMapSpawn;
             // Unsubscribe — guards against null-ref if subsystems were never started
             ServerMain.OnGameRunFrame       -= OnGameRunFrame;
             SV_Client.OnClientEnterWorld    -= OnClientEnterWorld;

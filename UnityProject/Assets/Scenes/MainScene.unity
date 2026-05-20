@@ -166,7 +166,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f783b8c7f4c8043108255071f4d5dbfe, type: 3}
   m_Name:
   m_EditorClassIdentifier:
-  MapName: mp_beach
+  MapName: goldrush
   MaxClients: 8
   BotCount: 4
   BotSkillLevel: 2

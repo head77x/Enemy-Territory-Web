@@ -431,14 +431,14 @@ public static class RuntimeResourceLoader
 
     // =========================================================================
     // Internal: subdivide triangles whose longest edge exceeds maxEdge
-    // Splits at the longest edge midpoint, up to 4 passes.
+    // Splits at the longest edge midpoint, repeating until all edges are in range.
     // =========================================================================
     private static Mesh SubdivideLargeTriangles(Mesh src, float maxEdge)
     {
         var verts = new List<Vector3>(src.vertices);
         var tris  = new List<int>(src.triangles);
 
-        for (int pass = 0; pass < 4; pass++)
+        for (int pass = 0; pass < 12; pass++)
         {
             bool any = false;
             var next = new List<int>(tris.Count);

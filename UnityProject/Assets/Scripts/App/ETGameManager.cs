@@ -396,6 +396,14 @@ namespace ET.App
 
             SetLayerRecursive(go, ViewmodelLayer);
 
+            // Viewmodel never casts or receives world shadows — ET renders weapons in a
+            // separate pass with their own lighting, independent of the world scene.
+            foreach (var mr in go.GetComponentsInChildren<MeshRenderer>())
+            {
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                mr.receiveShadows    = false;
+            }
+
             // Position the weapon in viewmodel-camera local space (lower-right, forward)
             go.transform.localPosition = new Vector3(5f, -8f, 24f);
             go.transform.localRotation = Quaternion.Euler(-5f, -10f, 0f);

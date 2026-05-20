@@ -580,9 +580,13 @@ public static class RuntimeResourceLoader
         {
             var mesh = new Mesh { name = surf.Name };
             mesh.vertices  = surf.Positions;
-            mesh.normals   = surf.Normals;
             mesh.uv        = surf.UVs;
             mesh.triangles = FlipWinding(surf.Indexes);
+            // Recalculate normals from winding geometry — guarantees outward-facing normals
+            // after the ET→Unity coordinate conversion (FlipWinding produces correct CW winding).
+            // The encoded MD3 normals via DecodeNormal are NOT used here; winding-derived normals
+            // are more reliable after the handedness change.
+            mesh.RecalculateNormals();
 
             for (int f = 1; f < md3.NumFrames; f++)
             {
@@ -597,13 +601,14 @@ public static class RuntimeResourceLoader
             }
             mesh.RecalculateBounds();
 
-            // Diagnostic: log first vertex normal to verify outward direction after ET→Unity conversion
-            if (surf.Normals != null && surf.Normals.Length > 0)
+            // Diagnostic: log first recalculated normal to verify outward direction
+            var recalcNormals = mesh.normals;
+            if (recalcNormals != null && recalcNormals.Length > 0)
             {
-                var n0 = surf.Normals[0];
+                var n0 = recalcNormals[0];
                 var p0 = surf.Positions.Length > 0 ? surf.Positions[0] : Vector3.zero;
-                Debug.Log($"[BuildMd3Object] surf='{surf.Name}' verts={surf.Normals.Length} " +
-                    $"normal[0]={n0:F3} pos[0]={p0:F1} bounds={mesh.bounds}");
+                Debug.Log($"[BuildMd3Object] surf='{surf.Name}' verts={recalcNormals.Length} " +
+                    $"recalcNormal[0]={n0:F3} pos[0]={p0:F1} bounds={mesh.bounds}");
             }
 
             var child = new GameObject(surf.Name);

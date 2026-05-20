@@ -207,7 +207,7 @@ namespace ET.Game
             float   distOrig       = dist;
             float   sweepEps       = 0f;
 
-            if (!isPointTrace && dist > kSweepEpsilon * 2f)
+            if (!isPointTrace && dist > 0.001f)
             {
                 sweepEps    = kSweepEpsilon;
                 unityStart -= dir * sweepEps;   // shift back so touching faces are swept

@@ -83,8 +83,31 @@ public static class RuntimeResourceLoader
         byte[] data = FileSystem.FS_ReadFile(virtualPath);
         if (data == null)
         {
-            Debug.LogWarning($"[RuntimeResourceLoader] MD3 not found: {virtualPath}");
-            return null;
+            // Try v_ prefix for viewmodel variant (e.g. models/weapons2/mp40/v_mp40.md3)
+            string dir      = Path.GetDirectoryName(virtualPath)?.Replace('\\', '/') ?? "";
+            string fileName = Path.GetFileName(virtualPath);
+            string viewPath = string.IsNullOrEmpty(dir)
+                ? "v_" + fileName
+                : dir + "/v_" + fileName;
+            data = FileSystem.FS_ReadFile(viewPath);
+            if (data != null)
+            {
+                virtualPath = viewPath;
+            }
+            else
+            {
+                // Log what IS available in the same directory to help diagnose path issues
+                var avail = FileSystem.FS_GetFileList(dir, ".md3");
+                Debug.LogWarning($"[RuntimeResourceLoader] MD3 not found: {virtualPath}" +
+                    (avail.Length > 0
+                        ? $". Available in '{dir}': {string.Join(", ", avail)}"
+                        : $". No .md3 files found in '{dir}'"));
+                // Also log top-level weapons dirs
+                var weapDirs = FileSystem.FS_GetFileList("models/weapons2", ".md3");
+                if (weapDirs.Length > 0)
+                    Debug.Log($"[RuntimeResourceLoader] models/weapons2 .md3 files: {string.Join(", ", weapDirs)}");
+                return null;
+            }
         }
 
         Md3Data md3;

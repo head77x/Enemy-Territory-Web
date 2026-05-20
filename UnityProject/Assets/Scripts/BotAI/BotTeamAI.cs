@@ -320,8 +320,8 @@ namespace ET.BotAI
                 var ent = ServerGameLogic.Entities[i];
                 if (ent?.Client == null || !ent.InUse) continue;
                 if (ent.Client.Sess.SessionTeam == bs.Team) continue;
-                if ((ent.Client.PS.Powerups & (1 << GameConstants.PW_REDFLAG)) != 0 ||
-                    (ent.Client.PS.Powerups & (1 << GameConstants.PW_BLUEFLAG)) != 0)
+                if (ent.Client.PS.Powerups[GameConstants.PW_REDFLAG] != 0 ||
+                    ent.Client.PS.Powerups[GameConstants.PW_BLUEFLAG] != 0)
                     return i;
             }
             return -1;

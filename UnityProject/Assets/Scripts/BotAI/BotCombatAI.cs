@@ -575,8 +575,8 @@ namespace ET.BotAI
         {
             var cl = ServerGameLogic.Level.Clients[bs.ClientNum];
             if (cl == null) return false;
-            return (cl.PS.Powerups & (1 << GameConstants.PW_REDFLAG)) != 0 ||
-                   (cl.PS.Powerups & (1 << GameConstants.PW_BLUEFLAG)) != 0;
+            return cl.PS.Powerups[GameConstants.PW_REDFLAG] != 0 ||
+                   cl.PS.Powerups[GameConstants.PW_BLUEFLAG] != 0;
         }
 
         // BotUpdateInventory — syncs bot's ammo table from PlayerState

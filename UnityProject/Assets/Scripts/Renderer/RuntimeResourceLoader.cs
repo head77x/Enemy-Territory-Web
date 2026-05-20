@@ -411,17 +411,37 @@ public static class RuntimeResourceLoader
             int idx = worldModel.FirstSurface + si;
             if (idx < 0 || idx >= bsp.Surfaces.Length) continue;
             var surf = bsp.Surfaces[idx];
-            if (surf.SurfaceType != SurfaceType.MST_PLANAR &&
-                surf.SurfaceType != SurfaceType.MST_TRIANGLE_SOUP) continue;
 
-            var verts = new BspVertex[surf.NumVerts];
-            for (int k = 0; k < surf.NumVerts; k++)
-                verts[k] = bsp.Vertices[surf.FirstVert + k];
-            var inds = new int[surf.NumIndexes];
-            for (int k = 0; k < surf.NumIndexes; k++)
-                inds[k] = bsp.Indices[surf.FirstIndex + k];
+            BspVertex[] surfVerts;
+            int[]       surfInds;
 
-            var m = BuildBspMesh(verts, inds, "col");
+            if (surf.SurfaceType == SurfaceType.MST_PLANAR ||
+                surf.SurfaceType == SurfaceType.MST_TRIANGLE_SOUP)
+            {
+                surfVerts = new BspVertex[surf.NumVerts];
+                for (int k = 0; k < surf.NumVerts; k++)
+                    surfVerts[k] = bsp.Vertices[surf.FirstVert + k];
+                surfInds = new int[surf.NumIndexes];
+                for (int k = 0; k < surf.NumIndexes; k++)
+                    surfInds[k] = bsp.Indices[surf.FirstIndex + k];
+            }
+            else if (surf.SurfaceType == SurfaceType.MST_PATCH)
+            {
+                if (surf.PatchWidth < 3 || surf.PatchHeight < 3 ||
+                    surf.NumVerts < surf.PatchWidth * surf.PatchHeight)
+                    continue;
+                var cpGrid = new BspVertex[surf.PatchWidth * surf.PatchHeight];
+                for (int k = 0; k < cpGrid.Length; k++)
+                    cpGrid[k] = bsp.Vertices[surf.FirstVert + k];
+                BspData.TesselatePatch(cpGrid, surf.PatchWidth, surf.PatchHeight, 3,
+                    out surfVerts, out surfInds);
+            }
+            else continue;
+
+            if (surfVerts == null || surfVerts.Length == 0 || surfInds == null || surfInds.Length == 0)
+                continue;
+
+            var m = BuildBspMesh(surfVerts, surfInds, "col");
             combineInstances.Add(new CombineInstance { mesh = m, transform = Matrix4x4.identity });
         }
 

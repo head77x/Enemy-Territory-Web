@@ -57,6 +57,9 @@ namespace ET.App
         // One-shot diagnostic flag for DriveLocalPlayer
         private bool _drivingLogged;
 
+        // Counter for post-PLAY trace diagnostics (logs first N frames)
+        private int _traceTestCount;
+
         // Pmove reused each server frame (avoids per-frame alloc)
         private readonly PlayerMovement _pm = new PlayerMovement();
         private PmoveInput _pmInput;
@@ -437,8 +440,9 @@ namespace ET.App
             // ClientThink_real sets ps.CommandTime = cmd.ServerTime (same as gc.LastCmd.ServerTime),
             // which would give Pmove msec = 0.  We restore the saved value afterwards so
             // Pmove always advances by one server frame (≤ 50 ms).
+            // Only save when we're actually going to run Pmove (not while menu is open).
             int prevCmdTime = 0;
-            if (LocalPlayerActive)
+            if (LocalPlayerActive && !ETUIManager.MenuIsOpen)
             {
                 var gc0 = ServerGameLogic.Clients[LocalClientNum];
                 if (gc0 != null) prevCmdTime = gc0.PS.CommandTime;
@@ -447,8 +451,9 @@ namespace ET.App
             // Run all entity thinks and client think-real (stores LastCmd, fires inactivity, etc.)
             ServerGameLogic.G_RunFrame(serverTime);
 
-            // Run BG_Pmove for the local player so origin/velocity advance each server tick
-            if (!LocalPlayerActive) return;
+            // Run BG_Pmove for the local player so origin/velocity advance each server tick.
+            // Do NOT run while the menu is open — player must not fall before pressing PLAY.
+            if (!LocalPlayerActive || ETUIManager.MenuIsOpen) return;
 
             var gc = ServerGameLogic.Clients[LocalClientNum];
             if (gc == null) return;
@@ -477,7 +482,26 @@ namespace ET.App
             _pmInput.Trace         = CollisionSystem.DefaultTraceFunc;
             _pmInput.PointContents = CollisionSystem.DefaultPointContentsFunc;
 
+            float preOrigin2 = ps.Origin2;
             _pm.Pmove(_pmInput);
+
+            // Diagnostic: log origin change and floor-trace result for the first few frames
+            // after PLAY so we can verify floor collision is working.
+            if (_traceTestCount < 5)
+            {
+                _traceTestCount++;
+                var floorStart = new Vector3(ps.Origin0, ps.Origin1, ps.Origin2);
+                var floorEnd   = new Vector3(ps.Origin0, ps.Origin1, ps.Origin2 - 500f);
+                var pmMins     = new Vector3(-15f, -15f, -24f);
+                var pmMaxs     = new Vector3( 15f,  15f,  32f);
+                var floorTr = CollisionSystem.CM_Trace(floorStart, floorEnd, pmMins, pmMaxs,
+                                                       MASK_PLAYERSOLID);
+                Debug.Log($"[ETGameManager] Pmove frame {_traceTestCount}: " +
+                          $"origin=ET({ps.Origin0:F0},{ps.Origin1:F0},{ps.Origin2:F0}) " +
+                          $"deltaZ={ps.Origin2-preOrigin2:F1} vel2={ps.Velocity2:F1} " +
+                          $"floorTrace frac={floorTr.Fraction:F3} " +
+                          $"hit={floorTr.Fraction < 1f} entNum={floorTr.EntityNum}");
+            }
 
             // Sync entity origin from updated player state
             var ent = ServerGameLogic.Entities[LocalClientNum];

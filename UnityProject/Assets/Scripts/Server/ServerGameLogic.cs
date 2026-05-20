@@ -764,7 +764,11 @@ namespace ET.Server
             ps.ViewAngles0 = angles.x;
             ps.ViewAngles1 = angles.y;
             ps.ViewAngles2 = angles.z;
-            ps.ViewHeight  = GameConst.DEFAULT_VIEWHEIGHT;
+            ps.ViewHeight       = GameConst.DEFAULT_VIEWHEIGHT;
+            ps.StandViewHeight  = GameConst.DEFAULT_VIEWHEIGHT;
+            ps.CrouchViewHeight = GameConst.CROUCH_VIEWHEIGHT;
+            ps.DeadViewHeight   = GameConst.DEAD_VIEWHEIGHT;
+            ps.CrouchMaxZ       = GameConst.CROUCH_VIEWHEIGHT;   // maxs.z when crouching
 
             ps.Mins0 = -15f; ps.Mins1 = -15f; ps.Mins2 = -24f;
             ps.Maxs0 =  15f; ps.Maxs1 =  15f; ps.Maxs2 =  32f;
@@ -828,6 +832,9 @@ namespace ET.Server
             if (best != null)
             {
                 origin = best.Origin;
+                // Match ET spawn.c: move up 9 units so the player bottom
+                // is clearly above the floor for the first ground trace.
+                origin.z += 9f;
                 angles = best.Angles;
             }
 

@@ -243,10 +243,34 @@ namespace ET.Game
 
             if (!didHit)
             {
+                if (startSolid)
+                {
+                    // Started inside solid geometry and PhysX found no exit hit.
+                    // Report AllSolid so PM_CorrectAllSolid can attempt to recover.
+                    // This matches Q3/ET CM_BoxTrace behaviour: trace.fraction = 0
+                    // when the trace starts in solid and no clear path exists.
+                    int solidContents = 0;
+                    Collider[] overlapsForContents = Physics.OverlapBox(unityStart, unityExtents,
+                        Quaternion.identity, layerMask, QueryTriggerInteraction.Ignore);
+                    if (overlapsForContents != null)
+                        foreach (var col in overlapsForContents)
+                            solidContents |= LayerToContents(col.gameObject.layer);
+
+                    return new TraceResult
+                    {
+                        AllSolid   = true,
+                        StartSolid = true,
+                        Fraction   = 0f,
+                        EndPos     = start,
+                        Contents   = solidContents != 0 ? solidContents : Contents.Solid,
+                        EntityNum  = GameConst.ENTITYNUM_WORLD,
+                    };
+                }
+
                 // No geometry in the way.
                 return new TraceResult
                 {
-                    StartSolid = startSolid,
+                    StartSolid = false,
                     Fraction   = 1f,
                     EndPos     = end,
                     EntityNum  = GameConst.ENTITYNUM_NONE,

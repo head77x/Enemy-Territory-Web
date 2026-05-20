@@ -432,15 +432,30 @@ public static class RuntimeResourceLoader
         combined.CombineMeshes(combineInstances.ToArray(), mergeSubMeshes: true, useMatrices: false);
         combined.RecalculateBounds();
 
+        int trisBefore = combined.triangles.Length / 3;
+        Debug.Log($"[RuntimeResourceLoader] Collision mesh before subdivision: " +
+                  $"{combined.vertexCount} verts, {trisBefore} tris, " +
+                  $"bounds={combined.bounds}");
+
         // PhysX warns when any triangle edge exceeds 500 units.
         // Subdivide long edges so every triangle stays within the limit.
         combined = SubdivideLargeTriangles(combined, 490f);
+
+        int trisAfter = combined.triangles.Length / 3;
+        Debug.Log($"[RuntimeResourceLoader] Collision mesh after subdivision: " +
+                  $"{combined.vertexCount} verts, {trisAfter} tris");
+
+        if (trisAfter > 500000)
+            Debug.LogWarning($"[RuntimeResourceLoader] Collision mesh has {trisAfter} triangles — " +
+                             "exceeds PhysX recommended limit (500k). MeshCollider may fail silently.");
 
         var col = root.AddComponent<MeshCollider>();
         col.cookingOptions = MeshColliderCookingOptions.EnableMeshCleaning
                            | MeshColliderCookingOptions.WeldColocatedVertices
                            | MeshColliderCookingOptions.UseFastMidphase;
         col.sharedMesh = combined;
+        Debug.Log($"[RuntimeResourceLoader] MeshCollider assigned, sharedMesh={col.sharedMesh != null}, " +
+                  $"triangles={col.sharedMesh?.triangles.Length / 3 ?? 0}");
     }
 
     // =========================================================================

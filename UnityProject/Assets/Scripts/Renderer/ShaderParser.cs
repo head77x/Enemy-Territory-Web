@@ -85,12 +85,14 @@ public class EtShader
         {
             mat = new Material(Shader.Find("Universal Render Pipeline/Lit")
                             ?? Shader.Find("Standard"));
-            // Built-in RP transparency keywords
-            mat.SetFloat("_Mode", 3);
+            // URP transparency setup (_Mode/_ALPHABLEND_ON are Built-in RP only)
+            mat.SetFloat("_Surface", 1f);           // 0=Opaque, 1=Transparent
+            mat.SetFloat("_Blend", 0f);             // 0=Alpha blend
+            mat.SetFloat("_ZWrite", 0f);
             mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
             mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            mat.SetInt("_ZWrite", 0);
-            mat.EnableKeyword("_ALPHABLEND_ON");
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.DisableKeyword("_ALPHATEST_ON");
             mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
         }
         else

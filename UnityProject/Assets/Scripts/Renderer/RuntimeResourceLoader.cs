@@ -155,6 +155,10 @@ public static class RuntimeResourceLoader
                 _texCache[key] = tex;
                 return tex;
             }
+
+            // File was found in PK3 but decode failed — log and keep trying other extensions
+            Debug.LogWarning($"[RuntimeResourceLoader] Decode failed for '{candidate}' " +
+                             $"({raw.Length} bytes, ext={Path.GetExtension(candidate)})");
         }
 
         Debug.LogWarning($"[RuntimeResourceLoader] Texture not found: '{virtualPath}' " +
@@ -225,6 +229,11 @@ public static class RuntimeResourceLoader
                 surf.SurfaceType != SurfaceType.MST_PATCH  &&
                 surf.SurfaceType != SurfaceType.MST_TRIANGLE_SOUP)
                 continue;
+
+            // Skip non-visual surfaces (SURF_NODRAW = 0x0080)
+            int bspShaderFlags = (surf.ShaderNum >= 0 && surf.ShaderNum < bsp.Shaders.Length)
+                ? bsp.Shaders[surf.ShaderNum].SurfaceFlags : 0;
+            if ((bspShaderFlags & 0x0080) != 0) continue;
 
             BspVertex[] surfVerts;
             int[]       surfIndices;

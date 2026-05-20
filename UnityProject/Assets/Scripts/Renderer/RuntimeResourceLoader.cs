@@ -760,6 +760,28 @@ public static class RuntimeResourceLoader
             ? etShader.ToMaterialRuntime()
             : new Material(FindUnityShader(false)) { name = shaderName };
 
+        // ET multi-stage shaders (diffuse + additive env/glow) cause ToMaterialRuntime() to mark
+        // the material transparent because HasBlendFuncStage() sees the LATER blend stages.
+        // For model surfaces the first stage is always opaque diffuse — force the material back to
+        // opaque so the Unity renderer doesn't discard it as a transparent skybox pass.
+        if (etShader != null && etShader.Stages.Count > 0 &&
+            string.IsNullOrEmpty(etShader.Stages[0].BlendFunc) &&
+            mat.renderQueue >= (int)UnityEngine.Rendering.RenderQueue.Transparent)
+        {
+            var opaqueShader = UnityEngine.Shader.Find("Universal Render Pipeline/Lit")
+                            ?? UnityEngine.Shader.Find("Standard");
+            if (opaqueShader != null)
+            {
+                var prevTex = mat.mainTexture;
+                mat = new Material(opaqueShader) { name = shaderName };
+                if (prevTex != null)
+                {
+                    mat.mainTexture = prevTex;
+                    if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", prevTex);
+                }
+            }
+        }
+
         if (mat.mainTexture == null)
         {
             // Try shaderKey (no extension) first — LoadTexture will probe all extensions.
@@ -769,7 +791,6 @@ public static class RuntimeResourceLoader
 
             if (tex == null)
             {
-                // Diagnostics: list what is actually in the same directory
                 string texDir = Path.GetDirectoryName(shaderKey)?.Replace('\\', '/') ?? "";
                 var available = ET.Core.FileSystem.FS_GetFileList(texDir, ".tga");
                 var availJpg  = ET.Core.FileSystem.FS_GetFileList(texDir, ".jpg");

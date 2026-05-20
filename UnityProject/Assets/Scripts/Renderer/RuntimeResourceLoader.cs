@@ -581,11 +581,13 @@ public static class RuntimeResourceLoader
             var mesh = new Mesh { name = surf.Name };
             mesh.vertices  = surf.Positions;
             mesh.uv        = surf.UVs;
-            mesh.triangles = FlipWinding(surf.Indexes);
-            // Recalculate normals from winding geometry — guarantees outward-facing normals
-            // after the ET→Unity coordinate conversion (FlipWinding produces correct CW winding).
-            // The encoded MD3 normals via DecodeNormal are NOT used here; winding-derived normals
-            // are more reliable after the handedness change.
+            // EtToUnity has det=-1 (reflection), which turns CCW ET faces into CW Unity faces.
+            // CW in Unity = back-face by convention, but _Cull=Off renders them anyway.
+            // RecalculateNormals on the unflipped (CW) winding gives normals pointing TOWARD the
+            // camera (outward in ET's sense), which is correct for lighting.
+            // Applying FlipWinding would invert those normals to point AWAY from the camera,
+            // producing the inside-out/reversed-shadow appearance.
+            mesh.triangles = surf.Indexes;
             mesh.RecalculateNormals();
 
             for (int f = 1; f < md3.NumFrames; f++)
@@ -601,14 +603,14 @@ public static class RuntimeResourceLoader
             }
             mesh.RecalculateBounds();
 
-            // Diagnostic: log first recalculated normal to verify outward direction
+            // Diagnostic: log first recalculated normal; should be roughly -Z for front-facing gun surfaces
             var recalcNormals = mesh.normals;
             if (recalcNormals != null && recalcNormals.Length > 0)
             {
                 var n0 = recalcNormals[0];
                 var p0 = surf.Positions.Length > 0 ? surf.Positions[0] : Vector3.zero;
                 Debug.Log($"[BuildMd3Object] surf='{surf.Name}' verts={recalcNormals.Length} " +
-                    $"recalcNormal[0]={n0:F3} pos[0]={p0:F1} bounds={mesh.bounds}");
+                    $"normal[0]={n0:F3} pos[0]={p0:F1} bounds={mesh.bounds}");
             }
 
             var child = new GameObject(surf.Name);

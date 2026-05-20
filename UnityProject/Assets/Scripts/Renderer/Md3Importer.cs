@@ -337,12 +337,11 @@ public class Md3Importer : ScriptedImporter
             // Build Mesh from frame 0
             var mesh = new Mesh { name = surf.Name };
             mesh.vertices  = surf.Positions;
-            mesh.normals   = surf.Normals;
             mesh.uv        = surf.UVs;
-
-            // MD3 winding: flip triangle winding for Unity (left-hand → right-hand)
-            int[] tris = FlipWinding(surf.Indexes);
-            mesh.triangles = tris;
+            // EtToUnity (det=-1) produces CW winding in Unity space; do NOT flip.
+            // RecalculateNormals on CW triangles gives outward normals (toward camera).
+            mesh.triangles = surf.Indexes;
+            mesh.RecalculateNormals();
             mesh.RecalculateBounds();
 
             // ---- Blend shapes for morph-target animation ----------------

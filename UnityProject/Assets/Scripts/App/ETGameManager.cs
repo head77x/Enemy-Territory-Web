@@ -223,7 +223,7 @@ namespace ET.App
 
             // Set up the server-side client slot
             var cl = svs.Clients[LocalClientNum];
-            cl.State          = ClientState.Active;
+            cl.State          = ET.Server.ClientState.Active;
             cl.Name           = "LocalPlayer";
             cl.LastPacketTime = svs.Time;
 

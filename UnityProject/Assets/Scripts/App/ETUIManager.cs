@@ -122,6 +122,8 @@ namespace ET.App
         {
             // Show main menu on startup
             UISystem.UI_SetActiveMenu(UIMenuType.Main);
+            // Ensure the static gate matches actual menu state even if events fire early
+            MenuIsOpen = _menuVisible;
             Debug.Log($"[ETUIManager] Start — menuVisible={_menuVisible} menuType={_menuType} currentMenu={(UISystem.CurrentMenu != null ? UISystem.CurrentMenu.Type.ToString() : "null")}");
         }
 
@@ -627,7 +629,6 @@ namespace ET.App
             if (MenuButton(new Rect(x, by, bw, bh), "PLAY"))
             {
                 UISystem.UI_ForceMenuOff();
-                CmdSystem.Cbuf_AddText("map goldrush");
             }
             by += bh + gap;
 

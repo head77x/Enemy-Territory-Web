@@ -160,6 +160,18 @@ namespace ET.App
             cam.farClipPlane  = 16000f;
             cam.transform.position = new Vector3(0f, 100f, 0f);
 
+            // Ensure the BSP scene is lit. If there's no light in the scene, add one.
+            if (FindObjectOfType<Light>() == null)
+            {
+                var lightGo = new GameObject("Sun");
+                var sun = lightGo.AddComponent<Light>();
+                sun.type      = LightType.Directional;
+                sun.intensity = 1.2f;
+                sun.color     = new Color(1f, 0.96f, 0.84f);
+                sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            }
+            RenderSettings.ambientLight = new Color(0.35f, 0.35f, 0.40f);
+
             if (StartServer)
             {
                 ServerInit.SV_Init();

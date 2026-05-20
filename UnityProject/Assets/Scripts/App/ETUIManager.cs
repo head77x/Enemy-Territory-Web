@@ -162,7 +162,9 @@ namespace ET.App
                         Cursor.lockState = CursorLockMode.None;
                         Cursor.visible   = true;
                     }
-                    UISystem.UI_SetActiveMenu(_hudActive ? UIMenuType.Ingame : UIMenuType.Main);
+                    // Show ingame pause menu only when the player is actually in-game.
+                    UISystem.UI_SetActiveMenu(
+                        ETGameManager.LocalPlayerActive ? UIMenuType.Ingame : UIMenuType.Main);
                 }
             }
 
@@ -639,7 +641,10 @@ namespace ET.App
 
             if (MenuButton(new Rect(x, by, bw, bh), "PLAY"))
             {
-                UISystem.UI_ForceMenuOff();
+                if (ETGameManager.LocalPlayerActive)
+                    UISystem.UI_ForceMenuOff();
+                else
+                    UISystem.UI_SetActiveMenu(UIMenuType.Team);
             }
             by += bh + gap;
 
@@ -749,12 +754,12 @@ namespace ET.App
             float by = y + 30f;
             if (MenuButton(new Rect(x + 20f, by, 110f, 36f), "ALLIES"))
             {
-                CGameLimboPanel.CG_LimboPanelSelectTeam(1);
+                CGameLimboPanel.CG_LimboPanelSelectTeam(ET.Game.DamageSystem.TEAM_ALLIES); // 2
                 UISystem.UI_SetActiveMenu(UIMenuType.Class);
             }
             if (MenuButton(new Rect(x + W - 130f, by, 110f, 36f), "AXIS"))
             {
-                CGameLimboPanel.CG_LimboPanelSelectTeam(2);
+                CGameLimboPanel.CG_LimboPanelSelectTeam(ET.Game.DamageSystem.TEAM_AXIS); // 1
                 UISystem.UI_SetActiveMenu(UIMenuType.Class);
             }
             by += 52f;
@@ -782,6 +787,10 @@ namespace ET.App
                 if (MenuButton(new Rect(bx, by, bw, bh), ClassNames[i]))
                 {
                     CGameLimboPanel.CG_LimboPanelSelectClass(i);
+                    // Team was stored in LimboState by DrawTeamMenu.
+                    // Spawn the player with the selected team and class, then close all menus.
+                    ETGameManager.RequestSpawnLocalPlayer(
+                        CGameLimboPanel.State.SelectedTeam, i);
                     UISystem.UI_ForceMenuOff();
                 }
                 if (i % 2 == 1 || i == ClassNames.Length - 1) by += bh + gap;

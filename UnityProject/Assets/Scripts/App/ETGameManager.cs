@@ -42,6 +42,11 @@ namespace ET.App
         public float  MasterVolume   = 1f;
 
         // ----------------------------------------------------------------
+        // Singleton
+        // ----------------------------------------------------------------
+        public static ETGameManager Instance { get; private set; }
+
+        // ----------------------------------------------------------------
         // Local player state
         // ----------------------------------------------------------------
         // Whether the local player has been spawned and is actively playing
@@ -73,6 +78,8 @@ namespace ET.App
 
         private void Awake()
         {
+            Instance = this;
+
             // ---- Wire CommonSystem delegates (avoids circular assembly deps) ----
             CommonSystem.CvarSetDelegate     = (k, v) => CvarSystem.Set(k, v);
             CommonSystem.CvarGetIntDelegate  = (k) => CvarSystem.GetInt(k);
@@ -226,9 +233,9 @@ namespace ET.App
         }
 
         /// <summary>
-        /// Directly connects the local player to the server without going through
-        /// the OOB loopback handshake (getchallenge / challengeResponse / connect).
-        /// Equivalent to what the C code does for a local listen-server client.
+        /// Registers the local player's client slot on the server without spawning.
+        /// The player starts as a spectator and waits for team/class selection via the
+        /// Limbo UI before <see cref="SpawnLocalPlayer"/> is called.
         /// </summary>
         private void LocalConnect()
         {
@@ -239,18 +246,14 @@ namespace ET.App
                 return;
             }
 
-            // Set up the server-side client slot
+            // Set up the server-side slot — disable snapshot sending for local client.
             var cl = svs.Clients[LocalClientNum];
-            cl.State          = ET.Server.ClientState.Active;
-            cl.Name           = "LocalPlayer";
-            cl.LastPacketTime = svs.Time;
-            // Disable network snapshot sending for the local client — we drive the
-            // camera directly from PlayerState, so snapshot encoding is never needed.
-            // int.MaxValue exceeds the server's time-wrap restart threshold (0x70000000),
-            // so SV_SendClientSnapshot's time check always returns early.
+            cl.State            = ET.Server.ClientState.Active;
+            cl.Name             = "LocalPlayer";
+            cl.LastPacketTime   = svs.Time;
             cl.NextSnapshotTime = int.MaxValue;
 
-            // Register with game logic (allocates session/persistant, sets spectator)
+            // ClientConnect sets SessionTeam = Spectator; no spawn yet.
             string err = ServerGameLogic.ClientConnect(LocalClientNum, firstTime: true, isBot: false);
             if (err != null)
             {
@@ -258,28 +261,52 @@ namespace ET.App
                 return;
             }
 
-            // Set the player on Allies team so SelectSpawnPoint finds an info_player_allies
             var gc = ServerGameLogic.Clients[LocalClientNum];
-            gc.Sess.SessionTeam = DamageSystem.TEAM_ALLIES;
-            gc.Pers.Name        = "LocalPlayer";
+            gc.Pers.Name = "LocalPlayer";
 
-            // ClientBegin → ClientSpawn: places player at a spawn point
+            // Player remains Spectator until SpawnLocalPlayer() is called from the UI.
+            LocalPlayerActive = false;
+            Debug.Log("[ETGameManager] Local player connected — waiting for team/class selection.");
+        }
+
+        /// <summary>
+        /// Called by the UI after the player selects team and class.
+        /// Sets the server-side session and spawns the player into the world.
+        /// </summary>
+        public void SpawnLocalPlayer(int team, int classType)
+        {
+            var gc = ServerGameLogic.Clients[LocalClientNum];
+            if (gc == null)
+            {
+                Debug.LogError("[ETGameManager] SpawnLocalPlayer: no client slot");
+                return;
+            }
+
+            gc.Sess.SessionTeam  = team;
+            gc.Pers.ClassType    = classType;
+            gc.Pers.Name         = "LocalPlayer";
+
             ServerGameLogic.ClientBegin(LocalClientNum);
 
-            // Seed CommandTime to current server time so the first Pmove gets a
-            // normal 50ms delta instead of the full uptime since startup.
+            // Seed CommandTime so the first Pmove gets a normal 50ms delta.
             gc.PS.CommandTime = ServerMain.Svs.Time;
 
-            // Initialise camera angles from the spawned player state
+            // Initialise camera angles from the spawned PlayerState.
             var ps = gc.PS;
-            _camYaw   = ps.ViewAngles1;  // ET yaw
-            _camPitch = ps.ViewAngles0;  // ET pitch
+            _camYaw   = ps.ViewAngles1;
+            _camPitch = ps.ViewAngles0;
 
             LocalPlayerActive = true;
-            Debug.Log($"[ETGameManager] Local player spawned at " +
-                      $"ET({ps.Origin0:F0},{ps.Origin1:F0},{ps.Origin2:F0})");
+            Debug.Log($"[ETGameManager] Player spawned — team={team} class={classType} " +
+                      $"origin=({ps.Origin0:F0},{ps.Origin1:F0},{ps.Origin2:F0})");
 
             SetupViewmodel();
+        }
+
+        /// <summary>Static entry point for the UI layer to trigger a spawn.</summary>
+        public static void RequestSpawnLocalPlayer(int team, int classType)
+        {
+            Instance?.SpawnLocalPlayer(team, classType);
         }
 
         private void Update()

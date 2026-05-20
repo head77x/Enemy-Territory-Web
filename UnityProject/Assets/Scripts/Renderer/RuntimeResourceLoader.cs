@@ -601,7 +601,11 @@ public static class RuntimeResourceLoader
         if (mat.mainTexture == null)
         {
             var tex = LoadTexture(shaderName);
-            if (tex != null) mat.mainTexture = tex;
+            if (tex != null)
+            {
+                mat.mainTexture = tex;
+                if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
+            }
         }
 
         _matCache[shaderName] = mat;

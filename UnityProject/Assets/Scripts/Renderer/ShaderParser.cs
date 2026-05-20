@@ -413,7 +413,7 @@ public static class ShaderParser
         }
 
         if (!_runtimeCache.TryGetValue(name, out var result))
-            Debug.LogWarning($"[ShaderParser] Shader not found in runtime cache: '{name}'");
+            Debug.Log($"[ShaderParser] No shader def for '{name}', using texture fallback.");
         return result;
     }
 

@@ -61,6 +61,7 @@ public class EtShader
     public bool   Slick;
     public bool   Mirror;
     public bool   Portal;
+    public bool   PolygonOffset;
     public List<EtShaderStage> Stages = new();
 
     // ------------------------------------------------------------------
@@ -146,6 +147,11 @@ public class EtShader
         mat.name = Name;
         if (NoCull || TwoSided)
             mat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+
+        // polygonOffset: surface is co-planar with another (terrain decal, overlay).
+        // Render after base geometry so it wins the LEQUAL depth test.
+        if (PolygonOffset && !isAlphaTest && !isTransparent)
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.GeometryLast;
 
         // Use shader stage texture path, or fall back to the shader name itself
         // (handles compile-time-only shaders that have no stage blocks).
@@ -375,9 +381,12 @@ public static class ShaderParser
                     break;
                 }
 
+                case "polygonoffset":
+                    shader.PolygonOffset = true;
+                    break;
+
                 case "nopicmip":
                 case "nomipmaps":
-                case "polygonoffset":
                 case "entitymergable":
                 case "fogparms":
                 case "skyparms":
@@ -881,6 +890,7 @@ public static class ShaderParser
         "map", "clampmap", "animmap", "blendfunc", "alphafunc",
         "tcgen", "tcmod", "rgbgen", "alphagen", "detail",
         "depthwrite", "depthfunc", "entitymergable", "light", "light1",
+        "polygonoffset",
         "implicitmap", "implicitmask", "implicitblend",
         "qer_editorimage", "qer_alphafunc", "qer_trans", "qer_nocarve",
         "nofog", "nocompress", "fogonly", "tesssize",

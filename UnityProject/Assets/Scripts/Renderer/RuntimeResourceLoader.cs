@@ -768,9 +768,38 @@ public static class RuntimeResourceLoader
         if (etShader != null && (etShader.NoCull || etShader.TwoSided))
             mat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
 
-        // Load diffuse texture directly from shaderKey (extension-less path).
-        // LoadTexture probes .tga, .jpg, .png in order.
-        var tex = LoadTexture(shaderKey);
+        // Find the diffuse texture. Strategy:
+        // 1. Check ET shader stages for a map in the same directory as the shader — this is the
+        //    model's own diffuse texture (e.g. fg42_yd.tga when shader key is fg42_2).
+        //    envmap/effects textures are in a different directory (textures/effects/...) so they
+        //    are naturally skipped by the directory-match filter.
+        // 2. Try loading shaderKey directly (handles cases where shader name == texture name).
+        // 3. Fall back to shaderName (with extension) to catch cached-extension paths.
+        string shaderDir = Path.GetDirectoryName(shaderKey)?.Replace('\\', '/') ?? "";
+        string diffuseMap = null;
+
+        if (etShader != null)
+        {
+            foreach (var stage in etShader.Stages)
+            {
+                if (stage.IsLightmap || string.IsNullOrEmpty(stage.Map)) continue;
+                if (stage.Map.StartsWith("$") || stage.Map.StartsWith("*")) continue;
+                string stageDir = Path.GetDirectoryName(stage.Map)?.Replace('\\', '/') ?? "";
+                if (string.Equals(stageDir, shaderDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    diffuseMap = Path.GetFileNameWithoutExtension(stage.Map);
+                    if (!string.IsNullOrEmpty(stageDir))
+                        diffuseMap = stageDir + "/" + diffuseMap;
+                    break;
+                }
+            }
+        }
+
+        Texture2D tex = null;
+        if (!string.IsNullOrEmpty(diffuseMap))
+            tex = LoadTexture(diffuseMap);
+        if (tex == null)
+            tex = LoadTexture(shaderKey);
         if (tex == null && shaderKey != shaderName)
             tex = LoadTexture(shaderName);
 
@@ -780,6 +809,7 @@ public static class RuntimeResourceLoader
             var available = ET.Core.FileSystem.FS_GetFileList(texDir, ".tga");
             var availJpg  = ET.Core.FileSystem.FS_GetFileList(texDir, ".jpg");
             Debug.LogWarning($"[RuntimeResourceLoader] Texture not found for shader '{shaderName}'. " +
+                $"diffuseMap='{diffuseMap ?? "null"}' " +
                 $"Dir '{texDir}' has .tga: [{string.Join(", ", available)}] .jpg: [{string.Join(", ", availJpg)}]");
         }
         else

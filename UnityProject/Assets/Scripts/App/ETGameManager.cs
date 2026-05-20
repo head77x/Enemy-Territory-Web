@@ -226,6 +226,11 @@ namespace ET.App
             cl.State          = ET.Server.ClientState.Active;
             cl.Name           = "LocalPlayer";
             cl.LastPacketTime = svs.Time;
+            // Disable network snapshot sending for the local client — we drive the
+            // camera directly from PlayerState, so snapshot encoding is never needed.
+            // int.MaxValue exceeds the server's time-wrap restart threshold (0x70000000),
+            // so SV_SendClientSnapshot's time check always returns early.
+            cl.NextSnapshotTime = int.MaxValue;
 
             // Register with game logic (allocates session/persistant, sets spectator)
             string err = ServerGameLogic.ClientConnect(LocalClientNum, firstTime: true, isBot: false);
@@ -300,6 +305,11 @@ namespace ET.App
         {
             var gc = ServerGameLogic.Clients[LocalClientNum];
             if (gc == null) return;
+
+            // Keep the server-side slot alive (prevents timeout) and snapshots disabled
+            var cl = ServerMain.Svs.Clients[LocalClientNum];
+            cl.LastPacketTime   = ServerMain.Svs.Time;
+            cl.NextSnapshotTime = int.MaxValue;
 
             var ps  = gc.PS;
             var cam = Camera.main;

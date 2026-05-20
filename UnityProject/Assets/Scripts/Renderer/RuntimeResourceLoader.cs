@@ -597,6 +597,15 @@ public static class RuntimeResourceLoader
             }
             mesh.RecalculateBounds();
 
+            // Diagnostic: log first vertex normal to verify outward direction after ET→Unity conversion
+            if (surf.Normals != null && surf.Normals.Length > 0)
+            {
+                var n0 = surf.Normals[0];
+                var p0 = surf.Positions.Length > 0 ? surf.Positions[0] : Vector3.zero;
+                Debug.Log($"[BuildMd3Object] surf='{surf.Name}' verts={surf.Normals.Length} " +
+                    $"normal[0]={n0:F3} pos[0]={p0:F1} bounds={mesh.bounds}");
+            }
+
             var child = new GameObject(surf.Name);
             child.transform.SetParent(root.transform, false);
             child.AddComponent<MeshFilter>().sharedMesh = mesh;

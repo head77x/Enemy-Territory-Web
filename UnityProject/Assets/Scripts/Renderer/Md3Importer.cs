@@ -275,17 +275,18 @@ public class Md3Data
 
     /// <summary>
     /// Decode the 16-bit packed normal from an XyzNormal entry.
-    /// Encoding: lat = high byte, lng = low byte, angles in 256 units = 2π.
-    /// ET normal = (cos(lat)*cos(lng), sin(lat)*cos(lng), sin(lng)).
+    /// Q3/ET encoding: lat = high byte (azimuth), lng = low byte (zenith/inclination from +z).
+    /// ET normal = (cos(lat)*sin(lng), sin(lat)*sin(lng), cos(lng)).
+    /// Reference: Q3 tr_mesh.c — x=cos(lat)*sin(lng), y=sin(lat)*sin(lng), z=cos(lng).
     /// </summary>
     public static Vector3 DecodeNormal(short packed)
     {
         float lat = ((packed >> 8) & 0xFF) * (2f * Mathf.PI / 256f);
         float lng = (packed & 0xFF)         * (2f * Mathf.PI / 256f);
         var et = new Vector3(
-            Mathf.Cos(lat) * Mathf.Cos(lng),
-            Mathf.Sin(lat) * Mathf.Cos(lng),
-            Mathf.Sin(lng));
+            Mathf.Cos(lat) * Mathf.Sin(lng),
+            Mathf.Sin(lat) * Mathf.Sin(lng),
+            Mathf.Cos(lng));
         return EtToUnity(et);
     }
 

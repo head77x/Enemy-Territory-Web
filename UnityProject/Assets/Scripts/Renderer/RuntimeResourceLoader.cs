@@ -157,6 +157,8 @@ public static class RuntimeResourceLoader
             }
         }
 
+        Debug.LogWarning($"[RuntimeResourceLoader] Texture not found: '{virtualPath}' " +
+                         $"(tried: {string.Join(", ", candidates)})");
         _texCache[key] = null;   // negative cache
         return null;
     }

@@ -252,9 +252,9 @@ namespace ET.Game
         // ----------------------------------------------------------------
         public static void S_StopBackgroundTrack()
         {
-            EnsureInit();
-            _musicIntroSource.Stop();
-            _musicLoopSource.Stop();
+            if (!_initialised || _audioRoot == null) return;
+            if (_musicIntroSource != null) _musicIntroSource.Stop();
+            if (_musicLoopSource  != null) _musicLoopSource.Stop();
             PoolRunner.Instance.CancelMusicLoop();
         }
 
@@ -264,13 +264,12 @@ namespace ET.Game
         // ----------------------------------------------------------------
         public static void S_StopAllSounds()
         {
-            EnsureInit();
+            if (!_initialised || _audioRoot == null) return;
 
             S_StopBackgroundTrack();
 
-            // Stop everything currently in flight; they will be re-pooled normally
             foreach (var src in _audioRoot.GetComponents<AudioSource>())
-                src.Stop();
+                if (src != null) src.Stop();
         }
 
         // ----------------------------------------------------------------

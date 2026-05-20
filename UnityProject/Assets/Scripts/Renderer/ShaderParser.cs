@@ -367,18 +367,28 @@ public static class ShaderParser
         {
             _runtimeCacheLoaded = true;
             string[] files = ET.Core.FileSystem.FS_GetFileList("scripts", ".shader");
+            Debug.Log($"[ShaderParser] Found {files.Length} .shader files in scripts/: " +
+                      (files.Length > 0 ? string.Join(", ", files) : "(none)"));
             foreach (string f in files)
             {
-                string text = ET.Core.FileSystem.FS_ReadFileText($"scripts/{f}");
-                if (string.IsNullOrEmpty(text)) continue;
+                // FS_GetFileList returns full virtual paths like "scripts/etmain.shader"
+                string text = ET.Core.FileSystem.FS_ReadFileText(f);
+                if (string.IsNullOrEmpty(text))
+                {
+                    Debug.LogWarning($"[ShaderParser] Could not read shader file: {f}");
+                    continue;
+                }
+                int before = _runtimeCache.Count;
                 foreach (var kv in ParseFile(text))
                     if (!_runtimeCache.ContainsKey(kv.Key))
                         _runtimeCache[kv.Key] = kv.Value;
+                Debug.Log($"[ShaderParser] {f}: parsed {_runtimeCache.Count - before} shaders");
             }
             Debug.Log($"[ShaderParser] Loaded {_runtimeCache.Count} ET shader definitions at runtime.");
         }
 
-        _runtimeCache.TryGetValue(name, out var result);
+        if (!_runtimeCache.TryGetValue(name, out var result))
+            Debug.LogWarning($"[ShaderParser] Shader not found in runtime cache: '{name}'");
         return result;
     }
 

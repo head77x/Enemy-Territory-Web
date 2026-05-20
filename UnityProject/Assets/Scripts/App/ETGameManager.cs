@@ -288,6 +288,18 @@ namespace ET.App
 
             CmdSystem.Cbuf_Execute();
 
+            // N key: toggle noclip for debug
+            if (LocalPlayerActive && Input.GetKeyDown(KeyCode.N))
+            {
+                var gcN = ServerGameLogic.Clients[LocalClientNum];
+                if (gcN?.PS != null)
+                {
+                    bool wasNoclip = gcN.PS.PmType == GameConst.PM_NOCLIP;
+                    gcN.PS.PmType = wasNoclip ? GameConst.PM_NORMAL : GameConst.PM_NOCLIP;
+                    Debug.Log($"[ETGameManager] Noclip {(wasNoclip ? "OFF" : "ON")}");
+                }
+            }
+
             if (StartServer) ServerMain.SV_Frame(msec);
             if (StartClient) ClientMain.CL_Frame(msec);
 
@@ -560,6 +572,18 @@ namespace ET.App
             _pmInput.PointContents = CollisionSystem.DefaultPointContentsFunc;
 
             _pm.Pmove(_pmInput);
+
+            // Diagnostic: log player state once per second to verify Pmove is running
+            if (Time.frameCount % 60 == 0)
+            {
+                string mode = ps.PmType == GameConst.PM_NOCLIP ? "NOCLIP" : "NORMAL";
+                Debug.Log($"[ETGameManager] Player[{mode}] " +
+                          $"origin=({ps.Origin0:F1},{ps.Origin1:F1},{ps.Origin2:F1}) " +
+                          $"vel=({ps.Velocity0:F1},{ps.Velocity1:F1},{ps.Velocity2:F1}) " +
+                          $"ground={ps.GroundEntityNum} " +
+                          $"fwd={gc.LastCmd.ForwardMove} rt={gc.LastCmd.RightMove} " +
+                          $"pmType={ps.PmType} msec={msec}");
+            }
 
             // Sync entity origin from updated player state
             var ent = ServerGameLogic.Entities[LocalClientNum];

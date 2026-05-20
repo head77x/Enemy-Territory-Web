@@ -37,7 +37,9 @@ namespace ET.Core
             foreach (var pk3 in pk3s)
                 _searchPaths.Add(new Pk3Archive(pk3));
 
-            Debug.Log($"[FileSystem] Added game directory: {dir} ({pk3s.Length} PK3s)");
+            var pk3Names = System.Array.ConvertAll(pk3s, Path.GetFileName);
+            Debug.Log($"[FileSystem] Added game directory: {dir} " +
+                      $"({pk3s.Length} PK3s: {string.Join(", ", pk3Names)})");
         }
 
         // FS_ReadFile — load a virtual file into a byte array; returns null if not found
@@ -189,10 +191,32 @@ namespace ET.Core
 
             private ZipArchive Zip => _zip;
 
-            public override byte[] ReadFile(string path)
+            // ZipArchive.GetEntry is case-sensitive on all platforms.
+            // ET pak files store paths with lowercase forward-slashes, but some tools
+            // may produce mixed case or backslash separators.  We try exact match,
+            // then lowercase, then a full case-insensitive linear scan as a fallback.
+            private System.IO.Compression.ZipArchiveEntry FindEntry(string path)
             {
                 if (Zip == null) return null;
-                var entry = Zip.GetEntry(path) ?? Zip.GetEntry(path.ToLowerInvariant());
+                path = path.Replace('\\', '/');
+                var e = Zip.GetEntry(path);
+                if (e != null) return e;
+                string lower = path.ToLowerInvariant();
+                e = Zip.GetEntry(lower);
+                if (e != null) return e;
+                // Case-insensitive linear scan (handles upper-case entries, alt separators)
+                foreach (var entry in Zip.Entries)
+                {
+                    string name = entry.FullName.Replace('\\', '/');
+                    if (string.Equals(name, lower, StringComparison.OrdinalIgnoreCase))
+                        return entry;
+                }
+                return null;
+            }
+
+            public override byte[] ReadFile(string path)
+            {
+                var entry = FindEntry(path);
                 if (entry == null) return null;
                 using var stream = entry.Open();
                 var data = new byte[entry.Length];
@@ -206,11 +230,7 @@ namespace ET.Core
                 return data;
             }
 
-            public override bool FileExists(string path)
-            {
-                if (Zip == null) return false;
-                return Zip.GetEntry(path) != null || Zip.GetEntry(path.ToLowerInvariant()) != null;
-            }
+            public override bool FileExists(string path) => FindEntry(path) != null;
 
             public override IEnumerable<string> ListFiles(string dir, string ext)
             {

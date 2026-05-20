@@ -219,7 +219,9 @@ public class Md3Data
         ms.Position = surfStart + ofsST;
         for (int i = 0; i < numVerts; i++)
         {
-            surf.UVs[i] = new Vector2(r.ReadSingle(), r.ReadSingle());
+            float u = r.ReadSingle();
+            float v = r.ReadSingle();
+            surf.UVs[i] = new Vector2(u, 1f - v);   // ET/OpenGL V=0 is bottom; Unity V=0 is top
         }
 
         // XyzNormals — 8 bytes per vertex per frame: short[3] xyz + short normal

@@ -299,7 +299,8 @@ public class MdsData
         for (int vi = 0; vi < numVerts; vi++)
         {
             var etNormal    = new Vector3(r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
-            var uv          = new Vector2(r.ReadSingle(), r.ReadSingle());
+            var uv          = new Vector2(r.ReadSingle(), 0f);
+            uv.y = 1f - r.ReadSingle();   // ET/OpenGL V=0 is bottom; Unity V=0 is top
             int numWeights  = r.ReadInt32();
             int fixedParent = r.ReadInt32();
             float fixedDist = r.ReadSingle();

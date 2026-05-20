@@ -113,14 +113,22 @@ namespace ET.App
 
         private void Start()
         {
-            // ET maps span thousands of game units; increase far plane to avoid
-            // Z-precision loss that causes distant surfaces to render on top.
+            // Ensure the UI manager is present on this GameObject
+            if (GetComponent<ETUIManager>() == null)
+                gameObject.AddComponent<ETUIManager>();
+
+            // Ensure a camera exists and is configured for ET map scale
             var cam = Camera.main;
-            if (cam != null)
+            if (cam == null)
             {
-                cam.nearClipPlane = 1f;
-                cam.farClipPlane  = 16000f;
+                var camGo = new GameObject("Main Camera");
+                camGo.tag = "MainCamera";
+                cam = camGo.AddComponent<Camera>();
+                camGo.AddComponent<AudioListener>();
             }
+            cam.nearClipPlane = 1f;
+            cam.farClipPlane  = 16000f;
+            cam.transform.position = new Vector3(0f, 100f, 0f);
 
             if (StartServer)
             {

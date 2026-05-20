@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using ET.Core;
 using ET.Game;
 using ET.Server;
 
@@ -319,8 +320,8 @@ namespace ET.BotAI
                 var ent = ServerGameLogic.Entities[i];
                 if (ent?.Client == null || !ent.InUse) continue;
                 if (ent.Client.Sess.SessionTeam == bs.Team) continue;
-                if ((ent.Client.PS.PowerUps & (1 << GameConstants.PW_REDFLAG)) != 0 ||
-                    (ent.Client.PS.PowerUps & (1 << GameConstants.PW_BLUEFLAG)) != 0)
+                if ((ent.Client.PS.Powerups & (1 << GameConstants.PW_REDFLAG)) != 0 ||
+                    (ent.Client.PS.Powerups & (1 << GameConstants.PW_BLUEFLAG)) != 0)
                     return i;
             }
             return -1;
@@ -331,10 +332,10 @@ namespace ET.BotAI
             => ent != null && ent.S.Frame > 0;
 
         public static bool ConstructionFullyBuilt(GEntity ent)
-            => ent != null && ent.S.Frame >= ent.S.Angles2[2];
+            => ent != null && ent.S.Frame >= ent.S.Angles22;
 
         public static bool ConstructionPartlyBuilt(GEntity ent)
-            => ent != null && ent.S.Frame > 0 && ent.S.Frame < ent.S.Angles2[2];
+            => ent != null && ent.S.Frame > 0 && ent.S.Frame < ent.S.Angles22;
 
         public static bool ConstructionDestroyable(GEntity ent)
             => ent != null && ent.S.Frame > 0;
@@ -362,12 +363,12 @@ namespace ET.BotAI
         {
             var ent = ServerGameLogic.Entities[clientNum];
             if (ent == null) return float.MaxValue;
-            var path = NavMesh.CalculatePath(ent.Origin, goal, NavMesh.AllAreas,
-                new NavMeshPath());
-            if (path.status == NavMeshPathStatus.PathInvalid) return float.MaxValue;
+            var navPath = new NavMeshPath();
+            bool ok = NavMesh.CalculatePath(ent.Origin, goal, NavMesh.AllAreas, navPath);
+            if (!ok || navPath.status == NavMeshPathStatus.PathInvalid) return float.MaxValue;
             float dist = 0f;
-            for (int i = 1; i < path.corners.Length; i++)
-                dist += Vector3.Distance(path.corners[i-1], path.corners[i]);
+            for (int i = 1; i < navPath.corners.Length; i++)
+                dist += Vector3.Distance(navPath.corners[i-1], navPath.corners[i]);
             return dist;
         }
 

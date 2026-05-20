@@ -85,7 +85,7 @@ namespace ET.BotAI
         // -----------------------------------------------------------------------
         public static void BotSayTeam(BotAgent bot, string message)
         {
-            BotMain.OnBotChat?.Invoke(bot.ClientNum, $"[TEAM] {bot.Name}: {message}");
+            BotMain.RaiseBotChat(bot.ClientNum, $"[TEAM] {bot.Name}: {message}");
         }
 
         // -----------------------------------------------------------------------
@@ -93,7 +93,7 @@ namespace ET.BotAI
         // -----------------------------------------------------------------------
         public static void BotSay(BotAgent bot, string message)
         {
-            BotMain.OnBotChat?.Invoke(bot.ClientNum, $"{bot.Name}: {message}");
+            BotMain.RaiseBotChat(bot.ClientNum, $"{bot.Name}: {message}");
         }
 
         // -----------------------------------------------------------------------

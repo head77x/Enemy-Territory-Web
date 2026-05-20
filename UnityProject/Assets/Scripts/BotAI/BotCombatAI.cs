@@ -241,7 +241,7 @@ namespace ET.BotAI
             // Medic: revive if low health friends nearby
             if (bs.DesiredClass == 1 && bs.Health < 50f)
             {
-                bs.CurrentGoal.Type = BotGoalType.MedicGiveHealth;
+                bs.CurrentGoal.Type = BotGoalType.GiveHealth;
                 return true;
             }
             // FieldOps: give ammo if ammo needed
@@ -541,8 +541,7 @@ namespace ET.BotAI
         {
             switch (weapon)
             {
-                case GameConstants.WP_GARAND:
-                case GameConstants.WP_SNIPERRIFLE: return 900f;
+                case GameConstants.WP_GARAND: return 900f;  // WP_SNIPERRIFLE == WP_GARAND, no separate case needed
                 case GameConstants.WP_FG42:
                 case GameConstants.WP_PANZERFAUST:  return 500f;
                 case GameConstants.WP_FLAMETHROWER: return 180f;
@@ -576,8 +575,8 @@ namespace ET.BotAI
         {
             var cl = ServerGameLogic.Level.Clients[bs.ClientNum];
             if (cl == null) return false;
-            return (cl.PS.PowerUps & (1 << GameConstants.PW_REDFLAG)) != 0 ||
-                   (cl.PS.PowerUps & (1 << GameConstants.PW_BLUEFLAG)) != 0;
+            return (cl.PS.Powerups & (1 << GameConstants.PW_REDFLAG)) != 0 ||
+                   (cl.PS.Powerups & (1 << GameConstants.PW_BLUEFLAG)) != 0;
         }
 
         // BotUpdateInventory — syncs bot's ammo table from PlayerState

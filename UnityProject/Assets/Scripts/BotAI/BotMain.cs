@@ -50,6 +50,9 @@ namespace ET.BotAI
         public int          Health;
         public Vector3      EnemyPos;         // last known enemy world position
 
+        // Per-bot runtime data used by BotCombatAI / BotTeamAI
+        public BotState     BotStateData;
+
         public BotAgent(int clientNum, string name, BotSkill skill, int team, int playerClass)
         {
             ClientNum       = clientNum;
@@ -87,6 +90,28 @@ namespace ET.BotAI
         public static event Action<int, UserCmd> OnBotCmd;
         /// <summary>Raised whenever a bot sends a chat message.</summary>
         public static event Action<int, string>  OnBotChat;
+
+        // Read-only view of all active bot states (BotCombatAI / BotTeamAI iterate this)
+        public static IEnumerable<BotState> AllBotStates
+        {
+            get
+            {
+                foreach (var b in _bots)
+                    if (b.BotStateData != null) yield return b.BotStateData;
+            }
+        }
+
+        // Raise OnBotChat from outside BotMain (CS0070 restriction)
+        public static void RaiseBotChat(int clientNum, string msg) =>
+            OnBotChat?.Invoke(clientNum, msg);
+
+        // Look up the per-bot BotState runtime data by clientNum
+        public static BotState GetBotState(int clientNum)
+        {
+            foreach (var b in _bots)
+                if (b.ClientNum == clientNum) return b.BotStateData;
+            return null;
+        }
 
         // -----------------------------------------------------------------------
         // G_BotConnect — spawn a new bot (mirrors G_BotConnect in g_bot.c)

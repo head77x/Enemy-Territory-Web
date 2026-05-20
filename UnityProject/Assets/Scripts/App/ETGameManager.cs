@@ -28,7 +28,7 @@ namespace ET.App
         // ----------------------------------------------------------------
 
         [Header("Server Settings")]
-        public string   MapName        = "mp_beach";
+        public string   MapName        = "goldrush";
         public int      MaxClients     = 8;
         public int      BotCount       = 4;
         public BotSkill BotSkillLevel  = BotSkill.Medium;

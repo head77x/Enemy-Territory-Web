@@ -348,14 +348,6 @@ public static class RuntimeResourceLoader
                 mat.mainTexture = tex;
                 if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
             }
-
-            // Diagnostic: log material state for fallback path
-            Debug.Log($"[MatDiag] FALLBACK '{shaderName}' | " +
-                      $"unityShader={(unityShader != null ? unityShader.name : "NULL")} | " +
-                      $"tex={(tex != null ? tex.name + " " + tex.width + "x" + tex.height : "NULL")} | " +
-                      $"mainTex={(mat.mainTexture != null ? mat.mainTexture.name : "NULL")} | " +
-                      $"hasBaseMap={mat.HasProperty("_BaseMap")} | " +
-                      $"baseMap={(mat.HasProperty("_BaseMap") && mat.GetTexture("_BaseMap") != null ? "SET" : "NULL")}");
         }
 
         // Apply lightmap to UV2 if the surface references one

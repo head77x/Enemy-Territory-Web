@@ -69,54 +69,100 @@ public class EtShader
     // ------------------------------------------------------------------
     public Material ToMaterialRuntime()
     {
-        Material mat;
-        bool isTransparent = Translucent || HasBlendOrAlphaStage();
+        // Translucent is set for both alphaFunc and blendFunc stages in ParseShader.
+        // Distinguish: alphaFunc-only → AlphaTest cutout; blendFunc → Transparent blend.
+        bool hasAlphaFunc  = HasAlphaFuncStage();
+        bool hasBlendFunc  = HasBlendFuncStage();
+        bool isAlphaTest   = hasAlphaFunc && !hasBlendFunc;
+        bool isTransparent = hasBlendFunc || (Translucent && !isAlphaTest);
 
+        // Detect render pipeline: URP has "Universal Render Pipeline/Lit"; Standard is Built-in RP.
+        var urpLit   = Shader.Find("Universal Render Pipeline/Lit");
+        var standard = Shader.Find("Standard");
+        bool useUrp  = urpLit != null;
+        var baseShader = urpLit ?? standard;
+
+        Material mat;
         if (Sky)
         {
-            // ET sky surfaces need a background-queue opaque material.
-            // Skybox/6 Sided has no _MainTex so we use Standard/Lit instead
-            // and push to the background queue as a visual placeholder.
-            mat = new Material(Shader.Find("Universal Render Pipeline/Lit")
-                            ?? Shader.Find("Standard"));
+            mat = new Material(baseShader);
             mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Background;
+        }
+        else if (isAlphaTest)
+        {
+            mat = new Material(baseShader);
+            if (useUrp)
+            {
+                mat.SetFloat("_Surface", 0f);   // Opaque surface type
+                mat.SetFloat("_AlphaClip", 1f);
+                mat.SetFloat("_Cutoff", 0.5f);
+                mat.EnableKeyword("_ALPHATEST_ON");
+            }
+            else
+            {
+                // Standard (Built-in RP): AlphaTest mode
+                mat.SetFloat("_Mode", 1f);
+                mat.SetFloat("_Cutoff", 0.5f);
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
+                mat.SetFloat("_ZWrite", 1f);
+                mat.EnableKeyword("_ALPHATEST_ON");
+                mat.DisableKeyword("_ALPHABLEND_ON");
+                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
+            }
         }
         else if (isTransparent)
         {
-            mat = new Material(Shader.Find("Universal Render Pipeline/Lit")
-                            ?? Shader.Find("Standard"));
-            // URP transparency setup (_Mode/_ALPHABLEND_ON are Built-in RP only)
-            mat.SetFloat("_Surface", 1f);           // 0=Opaque, 1=Transparent
-            mat.SetFloat("_Blend", 0f);             // 0=Alpha blend
-            mat.SetFloat("_ZWrite", 0f);
-            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            mat.DisableKeyword("_ALPHATEST_ON");
-            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            mat = new Material(baseShader);
+            if (useUrp)
+            {
+                mat.SetFloat("_Surface", 1f);
+                mat.SetFloat("_Blend", 0f);
+                mat.SetFloat("_ZWrite", 0f);
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                mat.DisableKeyword("_ALPHATEST_ON");
+            }
+            else
+            {
+                // Standard (Built-in RP): Transparent mode
+                mat.SetFloat("_Mode", 3f);
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetFloat("_ZWrite", 0f);
+                mat.DisableKeyword("_ALPHATEST_ON");
+                mat.EnableKeyword("_ALPHABLEND_ON");
+                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            }
         }
         else
         {
-            mat = new Material(Shader.Find("Universal Render Pipeline/Lit")
-                            ?? Shader.Find("Standard"));
+            mat = new Material(baseShader);
         }
 
         mat.name = Name;
         if (NoCull || TwoSided)
             mat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
 
+        // Use shader stage texture path, or fall back to the shader name itself
+        // (handles compile-time-only shaders that have no stage blocks).
         string mainTexPath = FindFirstTextureMap();
+        if (string.IsNullOrEmpty(mainTexPath) && Stages.Count == 0 && !Sky)
+            mainTexPath = Name;
+
         if (!string.IsNullOrEmpty(mainTexPath))
         {
             var tex = RuntimeResourceLoader.LoadTexture(mainTexPath);
             if (tex != null)
             {
                 mat.mainTexture = tex;
-                // URP uses _BaseMap; set it explicitly to be safe
                 if (mat.HasProperty("_BaseMap"))
                     mat.SetTexture("_BaseMap", tex);
             }
-            else
+            else if (Stages.Count > 0)
             {
                 Debug.LogWarning($"[ShaderParser] '{Name}': texture not loaded: '{mainTexPath}'");
             }
@@ -127,23 +173,52 @@ public class EtShader
                              $"(maps: {string.Join(", ", Stages.ConvertAll(s => s.Map ?? "null"))})");
         }
 
-        // Diagnostic: log material state
-        Debug.Log($"[MatDiag] SHADER '{Name}' | " +
-                  $"unityShader={mat.shader?.name ?? "NULL"} | " +
-                  $"texPath={(mainTexPath ?? "none")} | " +
-                  $"mainTex={(mat.mainTexture != null ? mat.mainTexture.name + " " + mat.mainTexture.width + "x" + mat.mainTexture.height : "NULL")} | " +
-                  $"hasBaseMap={mat.HasProperty("_BaseMap")} | " +
-                  $"baseMap={(mat.HasProperty("_BaseMap") && mat.GetTexture("_BaseMap") != null ? "SET" : "NULL")} | " +
-                  $"sky={Sky} transp={isTransparent} stages={Stages.Count}");
-
         return mat;
+    }
+
+    // Shared helpers — needed at both runtime and editor time.
+    private bool HasBlendOrAlphaStage()
+    {
+        foreach (var stage in Stages)
+        {
+            if (!string.IsNullOrEmpty(stage.BlendFunc) ||
+                !string.IsNullOrEmpty(stage.AlphaFunc))
+                return true;
+        }
+        return false;
+    }
+
+    private bool HasAlphaFuncStage()
+    {
+        foreach (var stage in Stages)
+            if (!string.IsNullOrEmpty(stage.AlphaFunc)) return true;
+        return false;
+    }
+
+    private bool HasBlendFuncStage()
+    {
+        foreach (var stage in Stages)
+            if (!string.IsNullOrEmpty(stage.BlendFunc)) return true;
+        return false;
+    }
+
+    private string FindFirstTextureMap()
+    {
+        foreach (var stage in Stages)
+        {
+            if (stage.IsLightmap) continue;
+            if (string.IsNullOrEmpty(stage.Map)) continue;
+            // Skip ET engine built-in virtual textures — no file in PK3
+            if (stage.Map.StartsWith("$") || stage.Map.StartsWith("*")) continue;
+            return stage.Map;
+        }
+        return null;
     }
 
 #if UNITY_EDITOR
     // ------------------------------------------------------------------
-    // Convert this shader to a Unity Material.
-    // texturesRoot: the Assets-relative folder where texture files live
-    //               (e.g. "Assets/Textures").
+    // Convert this shader to a Unity Material (editor import path).
+    // texturesRoot: the Assets-relative folder where texture files live.
     // ------------------------------------------------------------------
     public Material ToMaterial(string texturesRoot)
     {
@@ -175,11 +250,9 @@ public class EtShader
         if (NoCull || TwoSided)
             mat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
 
-        // Assign _MainTex from the first non-lightmap stage
         string mainTexPath = FindFirstTextureMap();
         if (!string.IsNullOrEmpty(mainTexPath))
         {
-            // Try exact path, then with common extensions
             var tex = TryLoadTexture(texturesRoot, mainTexPath);
             if (tex != null)
                 mat.mainTexture = tex;
@@ -188,41 +261,15 @@ public class EtShader
         return mat;
     }
 
-    private bool HasBlendOrAlphaStage()
-    {
-        foreach (var stage in Stages)
-        {
-            if (!string.IsNullOrEmpty(stage.BlendFunc) ||
-                !string.IsNullOrEmpty(stage.AlphaFunc))
-                return true;
-        }
-        return false;
-    }
-
-    private string FindFirstTextureMap()
-    {
-        foreach (var stage in Stages)
-        {
-            if (stage.IsLightmap) continue;
-            if (string.IsNullOrEmpty(stage.Map)) continue;
-            // Skip ET engine built-in virtual textures — no file in PK3
-            if (stage.Map.StartsWith("$") || stage.Map.StartsWith("*")) continue;
-            return stage.Map;
-        }
-        return null;
-    }
-
     private static Texture2D TryLoadTexture(string texturesRoot, string mapPath)
     {
         string[] extensions = { "", ".tga", ".jpg", ".png", ".dds" };
         foreach (var ext in extensions)
         {
-            // Try the path verbatim under Assets/
             string assetPath = $"Assets/{mapPath}{ext}";
             var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
             if (tex != null) return tex;
 
-            // Also try under the specified texturesRoot
             string withRoot = $"{texturesRoot}/{mapPath}{ext}";
             tex = AssetDatabase.LoadAssetAtPath<Texture2D>(withRoot);
             if (tex != null) return tex;
@@ -359,6 +406,10 @@ public static class ShaderParser
                     break;
             }
         }
+
+        if (shader.Stages.Count == 0)
+            Debug.Log($"[ShaderParser] '{name}' parsed with 0 stages. Body[0..300]: " +
+                      $"'{body.Substring(0, Math.Min(300, body.Length))}'");
 
         return shader;
     }

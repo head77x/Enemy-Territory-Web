@@ -418,7 +418,82 @@ public static class RuntimeResourceLoader
         combined.CombineMeshes(combineInstances.ToArray(), mergeSubMeshes: true, useMatrices: false);
         combined.RecalculateBounds();
 
-        root.AddComponent<MeshCollider>().sharedMesh = combined;
+        // PhysX warns when any triangle edge exceeds 500 units.
+        // Subdivide long edges so every triangle stays within the limit.
+        combined = SubdivideLargeTriangles(combined, 490f);
+
+        var col = root.AddComponent<MeshCollider>();
+        col.cookingOptions = MeshColliderCookingOptions.EnableMeshCleaning
+                           | MeshColliderCookingOptions.WeldColocatedVertices
+                           | MeshColliderCookingOptions.UseFastMidphase;
+        col.sharedMesh = combined;
+    }
+
+    // =========================================================================
+    // Internal: subdivide triangles whose longest edge exceeds maxEdge
+    // Splits at the longest edge midpoint, up to 4 passes.
+    // =========================================================================
+    private static Mesh SubdivideLargeTriangles(Mesh src, float maxEdge)
+    {
+        var verts = new List<Vector3>(src.vertices);
+        var tris  = new List<int>(src.triangles);
+
+        for (int pass = 0; pass < 4; pass++)
+        {
+            bool any = false;
+            var next = new List<int>(tris.Count);
+
+            for (int i = 0; i < tris.Count; i += 3)
+            {
+                int i0 = tris[i], i1 = tris[i + 1], i2 = tris[i + 2];
+                Vector3 v0 = verts[i0], v1 = verts[i1], v2 = verts[i2];
+
+                float d01 = Vector3.Distance(v0, v1);
+                float d12 = Vector3.Distance(v1, v2);
+                float d20 = Vector3.Distance(v2, v0);
+                float longest = Mathf.Max(d01, d12, d20);
+
+                if (longest <= maxEdge)
+                {
+                    next.Add(i0); next.Add(i1); next.Add(i2);
+                    continue;
+                }
+
+                any = true;
+                int mid = verts.Count;
+
+                if (d01 >= d12 && d01 >= d20)
+                {
+                    verts.Add((v0 + v1) * 0.5f);
+                    next.Add(i0); next.Add(mid); next.Add(i2);
+                    next.Add(mid); next.Add(i1); next.Add(i2);
+                }
+                else if (d12 >= d01 && d12 >= d20)
+                {
+                    verts.Add((v1 + v2) * 0.5f);
+                    next.Add(i0); next.Add(i1); next.Add(mid);
+                    next.Add(i0); next.Add(mid); next.Add(i2);
+                }
+                else
+                {
+                    verts.Add((v2 + v0) * 0.5f);
+                    next.Add(i0); next.Add(i1); next.Add(mid);
+                    next.Add(mid); next.Add(i1); next.Add(i2);
+                }
+            }
+
+            tris = next;
+            if (!any) break;
+        }
+
+        var result = new Mesh { name = src.name };
+        result.indexFormat = verts.Count > 65535
+            ? UnityEngine.Rendering.IndexFormat.UInt32
+            : UnityEngine.Rendering.IndexFormat.UInt16;
+        result.SetVertices(verts);
+        result.SetTriangles(tris, 0);
+        result.RecalculateBounds();
+        return result;
     }
 
     // =========================================================================

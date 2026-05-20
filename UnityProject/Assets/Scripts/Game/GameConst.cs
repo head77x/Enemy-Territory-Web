@@ -23,9 +23,9 @@ namespace ET.Game
         // -------------------------------------------------------
         // Entities
         // -------------------------------------------------------
-        public const int MAX_GENTITIES       = 1024;
-        public const int ENTITYNUM_NONE      = MAX_GENTITIES - 1;   // 1023
-        public const int ENTITYNUM_WORLD     = MAX_GENTITIES - 2;   // 1022
+        public const int MAX_GENTITIES       = 2048;
+        public const int ENTITYNUM_NONE      = MAX_GENTITIES - 1;   // 2047
+        public const int ENTITYNUM_WORLD     = MAX_GENTITIES - 2;   // 2046
         public const int MAX_CLIENTS         = 64;
 
         // -------------------------------------------------------

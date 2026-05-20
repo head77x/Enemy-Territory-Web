@@ -18,8 +18,8 @@ namespace ET.Network
         public const int MAX_MSGLEN        = 16384;
         public const int MAX_STRING_CHARS  = 1024;
         public const int BIG_INFO_STRING   = 8192;
-        public const int GENTITYNUM_BITS   = 10;
-        public const int MAX_GENTITIES     = 1 << GENTITYNUM_BITS;  // 1024
+        public const int GENTITYNUM_BITS   = 11;
+        public const int MAX_GENTITIES     = 1 << GENTITYNUM_BITS;  // 2048
         public const int ANIM_BITS         = 10;
         public const int FLOAT_INT_BITS    = 13;
         public const int FLOAT_INT_BIAS    = 1 << (FLOAT_INT_BITS - 1);

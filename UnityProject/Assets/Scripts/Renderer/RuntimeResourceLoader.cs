@@ -24,6 +24,9 @@ public static class RuntimeResourceLoader
     private const string TRANSPARENT_SHADER  = "Universal Render Pipeline/Lit";
     private const string FALLBACK_SHADER     = "Standard";
 
+    // Entity string from the most recently loaded BSP (for G_SpawnEntitiesFromString)
+    public static string LastBspEntityString { get; private set; } = "";
+
     // =========================================================================
     // Texture cache — keyed by normalized virtual path
     // =========================================================================
@@ -68,6 +71,7 @@ public static class RuntimeResourceLoader
             return null;
         }
 
+        LastBspEntityString = bsp.EntityString ?? "";
         return BuildBspScene(bsp, mapName, parent);
     }
 

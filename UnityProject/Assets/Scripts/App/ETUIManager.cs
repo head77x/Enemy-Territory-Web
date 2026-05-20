@@ -61,12 +61,15 @@ namespace ET.App
         private bool        _limboVisible;
         private LimboState  _limboState;
 
-        // Free-camera (spectator) mode — active when no menu is open
+        // Free-camera (spectator) mode — active when no menu is open and player not spawned
         private bool  _freeCamActive;
         private float _camYaw;
         private float _camPitch;
         private const float CamMouseSens = 2f;
         private const float CamMoveSpeed = 400f;
+
+        // Exposed so ETGameManager can check whether a menu blocks input
+        public static bool MenuIsOpen { get; private set; }
 
         // IMGUI styles — lazily initialized in OnGUI
         private GUIStyle _boxStyle;
@@ -174,8 +177,8 @@ namespace ET.App
             if (Input.GetKeyDown(KeyCode.L) && _hudActive)
                 CGameLimboPanel.CG_LimboPanelOpen();
 
-            // Free-camera movement
-            if (_freeCamActive)
+            // Free-camera movement — skipped once local player has spawned
+            if (_freeCamActive && !ETGameManager.LocalPlayerActive)
                 HandleFreeCameraInput();
         }
 
@@ -225,6 +228,7 @@ namespace ET.App
         {
             _menuType    = t;
             _menuVisible = t != UIMenuType.None;
+            MenuIsOpen   = _menuVisible;
             _currentMenu = _menuVisible ? UISystem.CurrentMenu : null;
             // Release cursor when menu opens; re-lock when menu closes via HandleMenuClosed
             if (_menuVisible)
@@ -236,20 +240,25 @@ namespace ET.App
         private void HandleMenuClosed()
         {
             _menuVisible = false;
+            MenuIsOpen   = false;
             _currentMenu = null;
-            // Enter free-camera (spectator) mode
-            _freeCamActive = true;
-            _hudActive     = true;
+            _hudActive   = true;
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible   = false;
-            var cam = Camera.main;
-            if (cam != null)
+
+            // Only activate free-cam if the local player hasn't spawned yet.
+            // Once spawned, ETGameManager drives the camera from PlayerState.
+            if (!ETGameManager.LocalPlayerActive)
             {
-                _camYaw   = cam.transform.eulerAngles.y;
-                _camPitch = cam.transform.eulerAngles.x;
-                // Bring camera down from the top-down default to eye level
-                if (cam.transform.position.y > 50f)
-                    cam.transform.position = new Vector3(cam.transform.position.x, 50f, cam.transform.position.z);
+                _freeCamActive = true;
+                var cam = Camera.main;
+                if (cam != null)
+                {
+                    _camYaw   = cam.transform.eulerAngles.y;
+                    _camPitch = cam.transform.eulerAngles.x;
+                    if (cam.transform.position.y > 50f)
+                        cam.transform.position = new Vector3(cam.transform.position.x, 50f, cam.transform.position.z);
+                }
             }
         }
 
@@ -367,9 +376,31 @@ namespace ET.App
 
         private void DrawHUD()
         {
-            // In free-cam (spectator) mode there is no PlayerState yet — just show FPS.
             int fps = Mathf.RoundToInt(1f / Mathf.Max(Time.deltaTime, 0.0001f));
             GUI.Label(new Rect(4, 4, 60, 14), $"FPS {fps}", _smallStyle);
+
+            if (ETGameManager.LocalPlayerActive)
+            {
+                // Show live player state directly from ServerGameLogic
+                var gc = ET.Server.ServerGameLogic.Clients[0];
+                if (gc != null)
+                {
+                    var ps = gc.PS;
+                    int hp    = ps.Stats[ET.Game.GameConst.STAT_HEALTH];
+                    int maxHp = 100;
+                    DrawFilledBar(10, 440, 120, 14, HealthColor, 0.25f,
+                        maxHp > 0 ? Mathf.Clamp01((float)hp / maxHp) : 0f);
+                    GUI.Label(new Rect(10, 440, 120, 14), $"HP  {hp}", _smallStyle);
+
+                    GUI.Label(new Rect(4, 20, 300, 14),
+                        $"WASD=move  Mouse=look  LMB=fire  ESC=menu", _smallStyle);
+
+                    // Position debug
+                    GUI.Label(new Rect(4, 36, 300, 14),
+                        $"pos ({ps.Origin0:F0}, {ps.Origin1:F0}, {ps.Origin2:F0})", _smallStyle);
+                }
+                return;
+            }
 
             if (_freeCamActive)
             {

@@ -438,7 +438,7 @@ namespace ET.App
 
             // Encode view angles as 16-bit short values (ET angle-to-short convention)
             cmd.Angles[0] = (int)(short)(_camPitch * (65536f / 360f));
-            cmd.Angles[1] = (int)(short)(_camYaw   * (65536f / 360f));
+            cmd.Angles[1] = (int)(short)(-_camYaw  * (65536f / 360f));
             cmd.Angles[2] = 0;
 
             // Movement axes

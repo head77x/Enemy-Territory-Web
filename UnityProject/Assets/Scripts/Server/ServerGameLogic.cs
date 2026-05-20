@@ -1129,7 +1129,7 @@ namespace ET.Server
         {
             switch (classType)
             {
-                case GameConst.PC_SOLDIER:   return GameConst.WP_MP40;
+                case GameConst.PC_SOLDIER:   return GameConst.WP_FG42;
                 case GameConst.PC_MEDIC:     return GameConst.WP_THOMPSON;
                 case GameConst.PC_ENGINEER:  return GameConst.WP_KAR98;
                 case GameConst.PC_FIELDOPS:  return GameConst.WP_THOMPSON;

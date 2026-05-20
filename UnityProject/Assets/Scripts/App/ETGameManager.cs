@@ -53,7 +53,7 @@ namespace ET.App
         private void Awake()
         {
             // ---- Wire CommonSystem delegates (avoids circular assembly deps) ----
-            CommonSystem.CvarSetDelegate     = CvarSystem.Set;
+            CommonSystem.CvarSetDelegate     = (k, v) => CvarSystem.Set(k, v);
             CommonSystem.CvarGetIntDelegate  = (k) => CvarSystem.GetInt(k);
             CommonSystem.CvarWriteDelegate   = CvarSystem.WriteToString;
             CommonSystem.ConsolePrintDelegate= ClientConsole.Print;

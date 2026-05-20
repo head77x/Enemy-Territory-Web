@@ -764,15 +764,24 @@ public static class RuntimeResourceLoader
         // the material transparent because HasBlendFuncStage() sees the LATER blend stages.
         // For model surfaces the first stage is always opaque diffuse — force the material back to
         // opaque so the Unity renderer doesn't discard it as a transparent skybox pass.
-        if (etShader != null && etShader.Stages.Count > 0 &&
-            string.IsNullOrEmpty(etShader.Stages[0].BlendFunc) &&
+        // Also rebuild if no ET shader was found, since FindUnityShader returns URP Lit which
+        // defaults to transparent-like settings with no texture set yet.
+        bool firstStageOpaque = etShader == null ||
+            (etShader.Stages.Count > 0 && string.IsNullOrEmpty(etShader.Stages[0].BlendFunc)) ||
+            etShader.Stages.Count == 0;
+
+        if (firstStageOpaque &&
             mat.renderQueue >= (int)UnityEngine.Rendering.RenderQueue.Transparent)
         {
-            var opaqueShader = UnityEngine.Shader.Find("Universal Render Pipeline/Lit")
-                            ?? UnityEngine.Shader.Find("Standard");
+            var opaqueShader = UnityEngine.Shader.Find(OPAQUE_SHADER)
+                            ?? UnityEngine.Shader.Find(FALLBACK_SHADER);
             if (opaqueShader != null)
             {
-                var prevTex = mat.mainTexture;
+                // Grab texture from _BaseMap (URP) or mainTexture before rebuilding
+                Texture prevTex = null;
+                if (mat.HasProperty("_BaseMap")) prevTex = mat.GetTexture("_BaseMap");
+                if (prevTex == null) prevTex = mat.mainTexture;
+
                 mat = new Material(opaqueShader) { name = shaderName };
                 if (prevTex != null)
                 {
@@ -782,7 +791,8 @@ public static class RuntimeResourceLoader
             }
         }
 
-        if (mat.mainTexture == null)
+        if (mat.mainTexture == null &&
+            (mat.HasProperty("_BaseMap") ? mat.GetTexture("_BaseMap") == null : true))
         {
             // Try shaderKey (no extension) first — LoadTexture will probe all extensions.
             var tex = LoadTexture(shaderKey);
@@ -803,6 +813,19 @@ public static class RuntimeResourceLoader
                 if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
             }
         }
+
+        // Disable PBR specular/reflections — model surfaces should render as flat diffuse.
+        // URP Lit defaults to _Smoothness=0.5 which causes prominent environment map reflections.
+        if (mat.HasProperty("_Metallic"))   mat.SetFloat("_Metallic", 0f);
+        if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0f);
+        if (mat.HasProperty("_SpecColor"))  mat.SetColor("_SpecColor", Color.black);
+
+        // Diagnostic: confirm final material state before caching
+        Texture finalTex = mat.HasProperty("_BaseMap") ? mat.GetTexture("_BaseMap") : mat.mainTexture;
+        Debug.Log($"[RuntimeResourceLoader] GenericMat '{shaderName}': " +
+            $"stages={etShader?.Stages.Count.ToString() ?? "no-etshader"} " +
+            $"rq={mat.renderQueue} " +
+            $"tex={(finalTex != null ? finalTex.name : "NULL")}");
 
         _matCache[shaderName] = mat;
         return mat;

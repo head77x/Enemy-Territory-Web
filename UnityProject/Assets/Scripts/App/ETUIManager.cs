@@ -111,6 +111,7 @@ namespace ET.App
         {
             // Show main menu on startup
             UISystem.UI_SetActiveMenu(UIMenuType.Main);
+            Debug.Log($"[ETUIManager] Start — menuVisible={_menuVisible} menuType={_menuType} currentMenu={(UISystem.CurrentMenu != null ? UISystem.CurrentMenu.Type.ToString() : "null")}");
         }
 
         private void Update()
@@ -159,8 +160,15 @@ namespace ET.App
         }
 
         private void HandleMenuDraw(UIMenu menu)   => _currentMenu = menu;
-        private void HandleMenuChanged(UIMenuType t) { _menuType = t; _menuVisible = t != UIMenuType.None; }
-        private void HandleMenuClosed()              { _menuVisible = false; }
+        private void HandleMenuChanged(UIMenuType t)
+        {
+            _menuType    = t;
+            _menuVisible = t != UIMenuType.None;
+            // Grab the UIMenu that UISystem just built; OnMenuDraw only fires
+            // when UI_DrawMenu() is called explicitly, which the game loop never does.
+            _currentMenu = _menuVisible ? UISystem.CurrentMenu : null;
+        }
+        private void HandleMenuClosed() { _menuVisible = false; _currentMenu = null; }
 
         private void HandleConsole(float frac)
         {
@@ -233,8 +241,14 @@ namespace ET.App
         // OnGUI — main render entry point
         // =====================================================================
 
+        private bool _onGuiLogged;
         private void OnGUI()
         {
+            if (!_onGuiLogged)
+            {
+                _onGuiLogged = true;
+                Debug.Log($"[ETUIManager] OnGUI first call — menuVisible={_menuVisible} currentMenu={(_currentMenu != null ? _currentMenu.Type.ToString() : "null")} hudActive={_hudActive}");
+            }
             EnsureStyles();
 
             // Scale all drawing from 640×480 logical space to screen resolution

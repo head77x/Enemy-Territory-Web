@@ -83,8 +83,9 @@ namespace ET.Client
         public static event Action<MenuItem>   OnItemFocused;
         public static event Action<MenuItem>   OnItemActivated;
 
-        public static bool UI_IsFullscreen() => _fullscreenUI;
-        public static bool UI_IsActive()     => _uiActive;
+        public static bool   UI_IsFullscreen() => _fullscreenUI;
+        public static bool   UI_IsActive()     => _uiActive;
+        public static UIMenu CurrentMenu      => _currentMenu;
 
         public static void UI_Init()
         {

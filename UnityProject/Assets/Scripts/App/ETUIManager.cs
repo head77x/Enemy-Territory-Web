@@ -37,6 +37,7 @@ namespace ET.App
         // HUD
         private HudData    _hud;
         private bool       _hudActive;
+        private bool       _hudDataReady;
 
         // Menu
         private UIMenu     _currentMenu;
@@ -214,8 +215,9 @@ namespace ET.App
 
         private void HandleHUD(PlayerState ps)
         {
-            _hud       = CGameView.CG_BuildHudData();
-            _hudActive = true;
+            _hud          = CGameView.CG_BuildHudData();
+            _hudActive    = true;
+            _hudDataReady = true;
         }
 
         private void HandleMenuDraw(UIMenu menu)   => _currentMenu = menu;
@@ -374,7 +376,7 @@ namespace ET.App
                 GUI.Label(new Rect(4, 20, 200, 14), "WASD/EQ to move  Shift=sprint  ESC=menu", _smallStyle);
                 return;
             }
-            if (_hud == null) return;
+            if (!_hudDataReady) return;
 
             // ---- Health bar (bottom-left) ----
             DrawFilledBar(10, 440, 120, 14, HealthColor, 0.25f,

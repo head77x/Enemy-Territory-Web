@@ -60,6 +60,13 @@ namespace ET.App
         private bool        _limboVisible;
         private LimboState  _limboState;
 
+        // Free-camera (spectator) mode — active when no menu is open
+        private bool  _freeCamActive;
+        private float _camYaw;
+        private float _camPitch;
+        private const float CamMouseSens = 2f;
+        private const float CamMoveSpeed = 400f;
+
         // IMGUI styles — lazily initialized in OnGUI
         private GUIStyle _boxStyle;
         private GUIStyle _titleStyle;
@@ -121,6 +128,11 @@ namespace ET.App
             {
                 ClientConsole.ToggleConsole();
                 _consoleInput = "";
+                if (_freeCamActive)
+                {
+                    Cursor.lockState = CursorLockMode.None;
+                    Cursor.visible   = true;
+                }
             }
 
             if (_consoleVisible)
@@ -129,24 +141,71 @@ namespace ET.App
                 return; // consume all keys while console is open
             }
 
+            // ESC — open ingame menu or pop current menu
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                if (_menuVisible)
+                {
+                    UISystem.UI_PopMenu();
+                }
+                else
+                {
+                    // Pause free-cam and open ingame/main menu
+                    if (_freeCamActive)
+                    {
+                        Cursor.lockState = CursorLockMode.None;
+                        Cursor.visible   = true;
+                    }
+                    UISystem.UI_SetActiveMenu(_hudActive ? UIMenuType.Ingame : UIMenuType.Main);
+                }
+            }
+
+            // While a menu is open don't drive free-cam
+            if (_menuVisible) return;
+
             // Scoreboard — hold TAB
             if (Input.GetKeyDown(KeyCode.Tab))
                 CGameScoreboard.CG_ShowScoreboard();
             if (Input.GetKeyUp(KeyCode.Tab))
                 CGameScoreboard.CG_HideScoreboard();
 
-            // Menu toggle — ESC
-            if (Input.GetKeyDown(KeyCode.Escape))
+            // Limbo panel — L key
+            if (Input.GetKeyDown(KeyCode.L) && _hudActive)
+                CGameLimboPanel.CG_LimboPanelOpen();
+
+            // Free-camera movement
+            if (_freeCamActive)
+                HandleFreeCameraInput();
+        }
+
+        private void HandleFreeCameraInput()
+        {
+            var cam = Camera.main;
+            if (cam == null) return;
+
+            // Mouse look (only when cursor is locked)
+            if (Cursor.lockState == CursorLockMode.Locked)
             {
-                if (_menuVisible)
-                    UISystem.UI_PopMenu();
-                else if (_hudActive)
-                    UISystem.UI_SetActiveMenu(UIMenuType.Ingame);
+                _camYaw   += Input.GetAxis("Mouse X") * CamMouseSens;
+                _camPitch -= Input.GetAxis("Mouse Y") * CamMouseSens;
+                _camPitch = Mathf.Clamp(_camPitch, -89f, 89f);
+                cam.transform.rotation = Quaternion.Euler(_camPitch, _camYaw, 0f);
             }
 
-            // Limbo panel — L key (respawn selection)
-            if (Input.GetKeyDown(KeyCode.L) && _hudActive && !_menuVisible)
-                CGameLimboPanel.CG_LimboPanelOpen();
+            // WASD + EQ for up/down; Shift to sprint
+            float speed = CamMoveSpeed * Time.deltaTime;
+            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                speed *= 4f;
+
+            Vector3 move = Vector3.zero;
+            if (Input.GetKey(KeyCode.W))            move += cam.transform.forward;
+            if (Input.GetKey(KeyCode.S))            move -= cam.transform.forward;
+            if (Input.GetKey(KeyCode.A))            move -= cam.transform.right;
+            if (Input.GetKey(KeyCode.D))            move += cam.transform.right;
+            if (Input.GetKey(KeyCode.E) || Input.GetKey(KeyCode.Space))        move += Vector3.up;
+            if (Input.GetKey(KeyCode.Q) || Input.GetKey(KeyCode.LeftControl))  move -= Vector3.up;
+
+            cam.transform.position += move * speed;
         }
 
         // =====================================================================
@@ -164,11 +223,33 @@ namespace ET.App
         {
             _menuType    = t;
             _menuVisible = t != UIMenuType.None;
-            // Grab the UIMenu that UISystem just built; OnMenuDraw only fires
-            // when UI_DrawMenu() is called explicitly, which the game loop never does.
             _currentMenu = _menuVisible ? UISystem.CurrentMenu : null;
+            // Release cursor when menu opens; re-lock when menu closes via HandleMenuClosed
+            if (_menuVisible)
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible   = true;
+            }
         }
-        private void HandleMenuClosed() { _menuVisible = false; _currentMenu = null; }
+        private void HandleMenuClosed()
+        {
+            _menuVisible = false;
+            _currentMenu = null;
+            // Enter free-camera (spectator) mode
+            _freeCamActive = true;
+            _hudActive     = true;
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible   = false;
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                _camYaw   = cam.transform.eulerAngles.y;
+                _camPitch = cam.transform.eulerAngles.x;
+                // Bring camera down from the top-down default to eye level
+                if (cam.transform.position.y > 50f)
+                    cam.transform.position = new Vector3(cam.transform.position.x, 50f, cam.transform.position.z);
+            }
+        }
 
         private void HandleConsole(float frac)
         {
@@ -284,6 +365,17 @@ namespace ET.App
 
         private void DrawHUD()
         {
+            // In free-cam (spectator) mode there is no PlayerState yet — just show FPS.
+            int fps = Mathf.RoundToInt(1f / Mathf.Max(Time.deltaTime, 0.0001f));
+            GUI.Label(new Rect(4, 4, 60, 14), $"FPS {fps}", _smallStyle);
+
+            if (_freeCamActive)
+            {
+                GUI.Label(new Rect(4, 20, 200, 14), "WASD/EQ to move  Shift=sprint  ESC=menu", _smallStyle);
+                return;
+            }
+            if (_hud == null) return;
+
             // ---- Health bar (bottom-left) ----
             DrawFilledBar(10, 440, 120, 14, HealthColor, 0.25f,
                 _hud.MaxHealth > 0 ? (float)_hud.Health / _hud.MaxHealth : 0f);
@@ -312,9 +404,6 @@ namespace ET.App
                 GUI.Label(new Rect(580, 4, 56, 14), teamStr, _smallStyle);
             }
 
-            // ---- FPS counter (top-left) ----
-            int fps = Mathf.RoundToInt(1f / Mathf.Max(Time.deltaTime, 0.0001f));
-            GUI.Label(new Rect(4, 4, 60, 14), $"FPS {fps}", _smallStyle);
         }
 
         // =====================================================================

@@ -61,6 +61,7 @@ public class MdsSurface
     public int[]       Indices;
     // Bone references for this surface (indices into MdsData.Bones)
     public int[]       BoneReferences;
+    internal int       _ofsEnd;        // relative offset to next surface (binary reader use only)
 }
 
 public struct MdsTag
@@ -336,6 +337,19 @@ public class MdsData
     public static Vector3 EtToUnity(Vector3 et)
         => new Vector3(-et.y, et.z, et.x);
 
+    /// <summary>
+    /// Remaps an ET bone rotation (ZYX Euler, ET coord space) to a Unity Quaternion.
+    /// ET: X=forward, Y=left, Z=up → Unity: X=right, Y=up, Z=forward
+    /// </summary>
+    private static Quaternion RemapEtBoneRotation(Quaternion etRot)
+    {
+        // Convert ET quaternion components to Unity space by swapping axes:
+        //   ET x → Unity -y (ET forward → Unity -up)
+        //   ET y → Unity -x (ET left   → Unity -right)
+        //   ET z → Unity  z (ET up     → Unity forward)
+        return new Quaternion(-etRot.y, etRot.z, etRot.x, etRot.w);
+    }
+
     /// <summary>Read a null-terminated fixed-length ASCII string.</summary>
     public static string ReadFixedString(BinaryReader r, int length)
     {
@@ -345,8 +359,6 @@ public class MdsData
         return Encoding.ASCII.GetString(buf, 0, end);
     }
 
-    // Internal surface field so the outer loop can advance by ofsEnd
-    internal int _ofsEnd;
 }
 
 // ---------------------------------------------------------------------------

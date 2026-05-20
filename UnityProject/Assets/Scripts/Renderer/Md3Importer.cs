@@ -56,6 +56,7 @@ public class Md3Surface
     // Per-frame data for morph-target / blend-shape animation
     public Vector3[][] FramePositions;  // [frame][vert]
     public Vector3[][] FrameNormals;    // [frame][vert]
+    internal int       _ofsEnd;        // relative offset to next surface (binary reader use only)
 }
 
 public class Md3Data
@@ -295,8 +296,6 @@ public class Md3Data
         return Encoding.ASCII.GetString(buf, 0, end);
     }
 
-    // Internal: lets surface reader advance the outer file position
-    internal int _ofsEnd;
 }
 
 // ---------------------------------------------------------------------------

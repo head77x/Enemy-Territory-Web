@@ -764,9 +764,10 @@ public static class RuntimeResourceLoader
                     ?? UnityEngine.Shader.Find(FALLBACK_SHADER);
         Material mat = new Material(opaqueSh) { name = shaderName };
 
-        // Propagate NoCull/TwoSided from the ET shader definition if present.
-        if (etShader != null && (etShader.NoCull || etShader.TwoSided))
-            mat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+        // Disable back-face culling: ET→Unity coordinate conversion can invert winding
+        // on model surfaces, causing faces to be culled when viewed from the correct side.
+        // ET shaders also rarely set NoCull/TwoSided for model surfaces.
+        mat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
 
         // Find the diffuse texture. Strategy:
         // 1. Check ET shader stages for a map in the same directory as the shader — this is the

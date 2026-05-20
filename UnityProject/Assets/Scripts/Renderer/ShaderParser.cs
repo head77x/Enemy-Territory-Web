@@ -401,15 +401,63 @@ public static class ShaderParser
                     shader.Mirror = true;
                     break;
 
+                // ---- ET implicit stage directives ----
+                // These create a synthetic render stage without explicit { } block.
+                // implicitMap  <path|-> : opaque single-pass stage
+                // implicitMask <path|-> : alpha-test (GT0) stage (foliage, alpha cutout)
+                // implicitBlend<path|-> : transparent blend stage
+                case "implicitmap":
+                {
+                    string path = ConsumeToken(tokens, ref pos);
+                    var stage = new EtShaderStage();
+                    stage.Map = (path == "-") ? name : path;
+                    shader.Stages.Add(stage);
+                    break;
+                }
+
+                case "implicitmask":
+                {
+                    string path = ConsumeToken(tokens, ref pos);
+                    var stage = new EtShaderStage();
+                    stage.Map       = (path == "-") ? name : path;
+                    stage.AlphaFunc = "GT0";
+                    shader.Stages.Add(stage);
+                    shader.Translucent = true;
+                    shader.TwoSided    = true; // foliage is always two-sided
+                    break;
+                }
+
+                case "implicitblend":
+                {
+                    string path = ConsumeToken(tokens, ref pos);
+                    var stage = new EtShaderStage();
+                    stage.Map       = (path == "-") ? name : path;
+                    stage.BlendFunc = "blend";
+                    shader.Stages.Add(stage);
+                    shader.Translucent = true;
+                    break;
+                }
+
+                // ---- Editor-only qer_* directives — consume their arguments ----
+                case "qer_editorimage":
+                case "qer_alphafunc":
+                case "qer_trans":
+                    ConsumeToken(tokens, ref pos); // consume the single argument
+                    break;
+
+                case "qer_nocarve":
+                case "nofog":
+                case "nocompress":
+                case "fogonly":
+                case "tesssize":
+                    // Flag-only or single-arg directives we don't use for Unity rendering
+                    break;
+
                 // Ignore unknown top-level tokens (could be extended directives)
                 default:
                     break;
             }
         }
-
-        if (shader.Stages.Count == 0)
-            Debug.Log($"[ShaderParser] '{name}' parsed with 0 stages. Body[0..300]: " +
-                      $"'{body.Substring(0, Math.Min(300, body.Length))}'");
 
         return shader;
     }
@@ -833,6 +881,9 @@ public static class ShaderParser
         "map", "clampmap", "animmap", "blendfunc", "alphafunc",
         "tcgen", "tcmod", "rgbgen", "alphagen", "detail",
         "depthwrite", "depthfunc", "entitymergable", "light", "light1",
+        "implicitmap", "implicitmask", "implicitblend",
+        "qer_editorimage", "qer_alphafunc", "qer_trans", "qer_nocarve",
+        "nofog", "nocompress", "fogonly", "tesssize",
     };
 
     private static bool IsKeyword(string tok) => s_keywords.Contains(tok);

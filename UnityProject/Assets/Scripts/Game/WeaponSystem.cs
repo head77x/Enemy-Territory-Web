@@ -188,6 +188,13 @@ namespace ET.Game
         public static event Action<DamageInfo> OnDamage;
 
         /// <summary>
+        /// Optional provider set by the game layer so that G_Damage can
+        /// populate DamageInfo.TargetHealth for correct WillKill computation
+        /// in DamageSystem.
+        /// </summary>
+        public static Func<int, int> HealthProvider;
+
+        /// <summary>
         /// Raised by <see cref="FireWeapon"/> so the game layer can spawn a
         /// projectile or perform a traceline.
         /// </summary>
@@ -298,6 +305,7 @@ namespace ET.Game
                 Mod               = mod,
                 Headshot          = headshot,
                 Origin            = Vector3.zero,
+                TargetHealth      = HealthProvider?.Invoke(targetEntityNum) ?? 0,
             };
 
             OnDamage?.Invoke(info);

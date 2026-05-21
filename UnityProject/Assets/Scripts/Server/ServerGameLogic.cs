@@ -288,6 +288,12 @@ namespace ET.Server
             if (restart)
                 CvarSystem.Set("g_restarted", "1", force: true);
 
+            // Wire up the hitscan/projectile dispatcher and health provider.
+            HitscanSystem.Init();
+            WeaponSystem.HealthProvider = idx =>
+                ((uint)idx < (uint)Entities.Length && Entities[idx] != null)
+                    ? Entities[idx].Health : 0;
+
             OnGameInit?.Invoke();
             Debug.Log($"[ServerGameLogic] G_InitGame level={Level.MapName} time={levelTime} restart={restart}");
         }

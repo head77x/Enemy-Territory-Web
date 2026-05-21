@@ -615,12 +615,13 @@ public static class RuntimeResourceLoader
 
             var child = new GameObject(surf.Name);
             child.transform.SetParent(root.transform, false);
-            child.AddComponent<MeshFilter>().sharedMesh = mesh;
 
             string shaderName = (surf.ShaderNames != null && surf.ShaderNames.Length > 0)
                 ? surf.ShaderNames[0] : surf.Name;
-            var mat = GetOrBuildGenericMaterial(shaderName);
-            child.AddComponent<MeshRenderer>().sharedMaterial = mat;
+            // SkinnedMeshRenderer is required to drive blend-shape animation at runtime.
+            var smr = child.AddComponent<SkinnedMeshRenderer>();
+            smr.sharedMesh     = mesh;
+            smr.sharedMaterial = GetOrBuildGenericMaterial(shaderName);
         }
 
         // Tags → empty child transforms

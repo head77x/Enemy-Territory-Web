@@ -71,6 +71,8 @@ namespace ET.App
         private Camera    _viewmodelCam;
         private Transform _viewmodelRoot;
         private int       _viewmodelWeapon = GameConst.WP_NONE;
+        private int       _viewmodelNumFrames = 0;  // total MD3 frames including frame 0
+        private float     _viewmodelAnimTime  = 0f; // elapsed seconds for animation
 
         // ----------------------------------------------------------------
         // MonoBehaviour lifecycle
@@ -466,6 +468,11 @@ namespace ET.App
 
             SetLayerRecursive(go, ViewmodelLayer);
 
+            // Capture total frame count from first SkinnedMeshRenderer found (blend shapes + 1 for frame 0)
+            var firstSmr = go.GetComponentInChildren<SkinnedMeshRenderer>();
+            _viewmodelNumFrames = firstSmr != null ? firstSmr.sharedMesh.blendShapeCount + 1 : 0;
+            _viewmodelAnimTime  = 0f;
+
             // Also load the separate hand model for akimbo fallback weapons
             if (usingFallback && handPath != null)
             {
@@ -476,19 +483,19 @@ namespace ET.App
                     handGo.transform.localRotation = Quaternion.Euler(-5f, -10f, 0f);
                     handGo.transform.localScale    = Vector3.one;
                     SetLayerRecursive(handGo, ViewmodelLayer);
-                    foreach (var mr in handGo.GetComponentsInChildren<MeshRenderer>())
+                    foreach (var r in handGo.GetComponentsInChildren<Renderer>())
                     {
-                        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                        mr.receiveShadows    = false;
+                        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                        r.receiveShadows    = false;
                     }
                 }
             }
 
             // Viewmodel never casts or receives world shadows
-            foreach (var mr in go.GetComponentsInChildren<MeshRenderer>())
+            foreach (var r in go.GetComponentsInChildren<Renderer>())
             {
-                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                mr.receiveShadows    = false;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.receiveShadows    = false;
             }
 
             Debug.Log($"[ETGameManager] Viewmodel loaded: {wri.ModelPath}");
@@ -532,11 +539,14 @@ namespace ET.App
                 bool   hasBoth     = gunBounds.size != Vector3.zero && subBounds.size != Vector3.zero;
                 if (hasBoth)
                 {
-                    float gunMuzzleZ  = gunBounds.center.z + gunBounds.extents.z;
-                    float subBackZ    = subBounds.center.z - subBounds.extents.z;
-                    float zOff        = gunMuzzleZ - subBackZ;
-                    subGo.transform.localPosition = new Vector3(0f, 0f, zOff);
-                    Debug.Log($"[ETGameManager] Sub-model z-aligned: gunMuzzle={gunMuzzleZ:F2} subBack={subBackZ:F2} offset={zOff:F2}");
+                    // Align barrel center (x,y) to gun body center, and place barrel
+                    // back face (-z) at gun muzzle (+z face) so it looks attached.
+                    float xOff = gunBounds.center.x - subBounds.center.x;
+                    float yOff = gunBounds.center.y - subBounds.center.y;
+                    float zOff = (gunBounds.center.z + gunBounds.extents.z)
+                               - (subBounds.center.z - subBounds.extents.z);
+                    subGo.transform.localPosition = new Vector3(xOff, yOff, zOff);
+                    Debug.Log($"[ETGameManager] Sub-model aligned: offset=({xOff:F2},{yOff:F2},{zOff:F2})");
                 }
                 else
                 {
@@ -547,10 +557,10 @@ namespace ET.App
             }
 
             SetLayerRecursive(subGo, ViewmodelLayer);
-            foreach (var mr in subGo.GetComponentsInChildren<MeshRenderer>())
+            foreach (var r in subGo.GetComponentsInChildren<Renderer>())
             {
-                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                mr.receiveShadows    = false;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.receiveShadows    = false;
             }
             Debug.Log($"[ETGameManager] Sub-model loaded: {path} → attached to '{parent.name}'");
         }
@@ -564,6 +574,12 @@ namespace ET.App
                 if (mf.sharedMesh == null) continue;
                 if (first) { b = mf.sharedMesh.bounds; first = false; }
                 else b.Encapsulate(mf.sharedMesh.bounds);
+            }
+            foreach (var smr in root.GetComponentsInChildren<SkinnedMeshRenderer>())
+            {
+                if (smr.sharedMesh == null) continue;
+                if (first) { b = smr.sharedMesh.bounds; first = false; }
+                else b.Encapsulate(smr.sharedMesh.bounds);
             }
             return b;
         }
@@ -639,10 +655,37 @@ namespace ET.App
 
             // Reload viewmodel when weapon changes; keep camera synced
             UpdateViewmodel(ps.Weapon);
+            DriveViewmodelAnimation();
             if (_viewmodelCam != null && cam != null)
             {
                 _viewmodelCam.transform.position = cam.transform.position;
                 _viewmodelCam.transform.rotation = cam.transform.rotation;
+            }
+        }
+
+        // Cycles through MD3 morph frames via blend shape weights at ~15 fps (idle loop).
+        // ET viewmodel MD3s store all animation frames as sequential morph targets.
+        // Frame 0 is the base mesh; blend shape "frame_N" = delta from frame 0 to frame N.
+        // To show frame F exactly: set blend shape (F-1) to 100, all others to 0.
+        private void DriveViewmodelAnimation()
+        {
+            if (_viewmodelRoot == null || _viewmodelNumFrames <= 1) return;
+
+            const float fps = 15f;
+            _viewmodelAnimTime += Time.deltaTime * fps;
+            // Loop across frames 0..numFrames-1
+            int totalFrames = _viewmodelNumFrames;
+            int frameIndex  = (int)_viewmodelAnimTime % totalFrames;
+
+            foreach (var smr in _viewmodelRoot.GetComponentsInChildren<SkinnedMeshRenderer>())
+            {
+                int shapeCount = smr.sharedMesh != null ? smr.sharedMesh.blendShapeCount : 0;
+                for (int i = 0; i < shapeCount; i++)
+                {
+                    // blend shape i corresponds to frame (i+1).
+                    // Weight 100 = fully at that frame, 0 = at frame 0 base.
+                    smr.SetBlendShapeWeight(i, (i + 1 == frameIndex) ? 100f : 0f);
+                }
             }
         }
 

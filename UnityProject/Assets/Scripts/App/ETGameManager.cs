@@ -71,8 +71,9 @@ namespace ET.App
         private Camera    _viewmodelCam;
         private Transform _viewmodelRoot;
         private int       _viewmodelWeapon = GameConst.WP_NONE;
-        private int       _viewmodelNumFrames = 0;  // total MD3 frames including frame 0
-        private float     _viewmodelAnimTime  = 0f; // elapsed seconds for animation
+        private int       _viewmodelNumFrames    = 0;   // total MD3 frames including frame 0
+        private float     _viewmodelAnimTime     = 0f;  // elapsed seconds for current anim range
+        private int       _viewmodelLastWeapAnim = -1;  // last ps.WeapAnim value (for restart detection)
 
         // ----------------------------------------------------------------
         // MonoBehaviour lifecycle
@@ -472,6 +473,8 @@ namespace ET.App
             var firstSmr = go.GetComponentInChildren<SkinnedMeshRenderer>();
             _viewmodelNumFrames = firstSmr != null ? firstSmr.sharedMesh.blendShapeCount + 1 : 0;
             _viewmodelAnimTime  = 0f;
+            _viewmodelLastWeapAnim = -1;
+            Debug.Log($"[ETGameManager] Viewmodel frames loaded: {_viewmodelNumFrames} total (weapon={weapon})");
 
             // Also load the separate hand model for akimbo fallback weapons
             if (usingFallback && handPath != null)
@@ -663,27 +666,82 @@ namespace ET.App
             }
         }
 
-        // Cycles through MD3 morph frames via blend shape weights at ~15 fps (idle loop).
-        // ET viewmodel MD3s store all animation frames as sequential morph targets.
-        // Frame 0 is the base mesh; blend shape "frame_N" = delta from frame 0 to frame N.
-        // To show frame F exactly: set blend shape (F-1) to 100, all others to 0.
+        // -------------------------------------------------------------------
+        // Weapon animation frame ranges — ported from ET bg_misc.c bg_weaponlist[].
+        // Each entry is (animState, startFrame, numFrames, fps, looping).
+        // These are the frame ranges baked into each weapon's viewmodel MD3.
+        // -------------------------------------------------------------------
+        private struct WeapAnimRange
+        {
+            public int   Anim;
+            public int   Start;
+            public int   Count;
+            public float Fps;
+            public bool  Loop;
+        }
+
+        // Frame ranges for akimbo_colt / akimbo_luger viewmodel MD3s.
+        // Source: ET bg_misc.c bg_weaponlist entries for WP_AKIMBO_COLT / WP_AKIMBO_LUGER.
+        private static readonly WeapAnimRange[] s_AkimboAnimRanges = new WeapAnimRange[]
+        {
+            new WeapAnimRange { Anim = GameConst.WEAP_IDLE1,           Start =   0, Count = 40, Fps = 20f, Loop = true  },
+            new WeapAnimRange { Anim = GameConst.WEAP_IDLE2,           Start =  40, Count =  4, Fps = 20f, Loop = true  },
+            new WeapAnimRange { Anim = GameConst.WEAP_ATTACK1,         Start =  44, Count = 10, Fps = 20f, Loop = false },
+            new WeapAnimRange { Anim = GameConst.WEAP_ATTACK2,         Start =  54, Count = 10, Fps = 20f, Loop = false },
+            new WeapAnimRange { Anim = GameConst.WEAP_ATTACK_LASTSHOT, Start =  64, Count = 10, Fps = 20f, Loop = false },
+            new WeapAnimRange { Anim = GameConst.WEAP_RAISE,           Start =  74, Count = 15, Fps = 20f, Loop = false },
+            new WeapAnimRange { Anim = GameConst.WEAP_RELOAD1,         Start =  89, Count = 60, Fps = 20f, Loop = false },
+        };
+
+        // Returns the animation range for a given weapon and WEAP_* animState.
+        // Falls back to IDLE1 if not found.
+        private static WeapAnimRange GetWeapAnimRange(int weapon, int animState)
+        {
+            // All currently available models are akimbo variants — use same table.
+            var table = s_AkimboAnimRanges;
+            foreach (var r in table)
+                if (r.Anim == animState) return r;
+            return table[0]; // IDLE1 fallback
+        }
+
+        // Drives viewmodel morph-target animation by reading ps.WeapAnim (set by PlayerMovement).
+        // ET MD3 viewmodel format stores all animation states as sequential morph frames.
+        // Frame 0 = bind pose (base mesh); blend shape i = delta from frame 0 to frame (i+1).
+        // To display frame F: set blend shape (F-1) = 100, all others = 0.
         private void DriveViewmodelAnimation()
         {
             if (_viewmodelRoot == null || _viewmodelNumFrames <= 1) return;
 
-            const float fps = 15f;
-            _viewmodelAnimTime += Time.deltaTime * fps;
-            // Loop across frames 0..numFrames-1
-            int totalFrames = _viewmodelNumFrames;
-            int frameIndex  = (int)_viewmodelAnimTime % totalFrames;
+            var gc = ServerGameLogic.Clients[LocalClientNum];
+            int rawWeapAnim = gc?.PS?.WeapAnim ?? GameConst.WEAP_IDLE1;
+            int animState   = rawWeapAnim & ~GameConst.ANIM_TOGGLEBIT;
+
+            // Restart timer whenever the animation state changes (toggle bit flip = new anim).
+            if (rawWeapAnim != _viewmodelLastWeapAnim)
+            {
+                _viewmodelAnimTime     = 0f;
+                _viewmodelLastWeapAnim = rawWeapAnim;
+            }
+
+            var range = GetWeapAnimRange(_viewmodelWeapon, animState);
+
+            // Clamp range to actual loaded frame count
+            int rangeStart = Mathf.Min(range.Start, _viewmodelNumFrames - 1);
+            int rangeCount = Mathf.Min(range.Count, _viewmodelNumFrames - rangeStart);
+            if (rangeCount <= 0) rangeCount = 1;
+
+            _viewmodelAnimTime += Time.deltaTime * range.Fps;
+            int localFrame = range.Loop
+                ? (int)_viewmodelAnimTime % rangeCount
+                : Mathf.Min((int)_viewmodelAnimTime, rangeCount - 1);
+            int frameIndex = rangeStart + localFrame;   // absolute MD3 frame index
 
             foreach (var smr in _viewmodelRoot.GetComponentsInChildren<SkinnedMeshRenderer>())
             {
                 int shapeCount = smr.sharedMesh != null ? smr.sharedMesh.blendShapeCount : 0;
                 for (int i = 0; i < shapeCount; i++)
                 {
-                    // blend shape i corresponds to frame (i+1).
-                    // Weight 100 = fully at that frame, 0 = at frame 0 base.
+                    // Blend shape i represents absolute frame (i+1).
                     smr.SetBlendShapeWeight(i, (i + 1 == frameIndex) ? 100f : 0f);
                 }
             }

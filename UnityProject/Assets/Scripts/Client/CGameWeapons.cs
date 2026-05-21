@@ -85,7 +85,7 @@ namespace ET.Client
                     return "models/weapons2/sten/v_sten.md3";
                 case GameConst.WP_FG42:
                 case GameConst.WP_FG42SCOPE:
-                    return "models/weapons2/fg42/fg42.md3";
+                    return "models/weapons2/fg42/v_fg42.md3";
                 case GameConst.WP_MOBILE_MG42:
                 case GameConst.WP_MOBILE_MG42_SET:
                     return "models/weapons2/mg42/v_mg42.md3";

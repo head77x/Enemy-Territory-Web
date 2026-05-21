@@ -456,11 +456,11 @@ namespace ET.App
                 LoadAndAttachSubModel(barrelPath, go, new[] { "tag_barrel", "tag_weapon", "tag_flash" });
             }
 
-            // Position the weapon in viewmodel-camera local space (lower-right, forward).
-            // z=60 keeps the same angular offsets as z=24 at 70° FOV but increases
-            // the depth ratio from 2.0 to 1.42 (barrel z≈2, grip z≈28 in model space).
-            // At 60° FOV (±30° vertical), atan(-20/60)≈-18.4° stays safely in frame.
-            go.transform.localPosition = new Vector3(13f, -20f, 60f);
+            // Position mirrors ET's CG_CalculateWeaponPosition offset:
+            // +8 forward, +4 right, -8 up (quake units) → Unity (4, -8, 8).
+            // The MD3 vertex coordinates already encode the gun's position relative to
+            // this origin, so no further scaling is needed.
+            go.transform.localPosition = new Vector3(4f, -8f, 8f);
             go.transform.localRotation = Quaternion.Euler(-5f, -10f, 0f);
             go.transform.localScale    = Vector3.one;
 
@@ -472,7 +472,7 @@ namespace ET.App
                 var handGo = RuntimeResourceLoader.LoadMd3(handPath, _viewmodelRoot);
                 if (handGo != null)
                 {
-                    handGo.transform.localPosition = new Vector3(13f, -20f, 60f);
+                    handGo.transform.localPosition = new Vector3(4f, -8f, 8f);
                     handGo.transform.localRotation = Quaternion.Euler(-5f, -10f, 0f);
                     handGo.transform.localScale    = Vector3.one;
                     SetLayerRecursive(handGo, ViewmodelLayer);
@@ -502,7 +502,8 @@ namespace ET.App
         }
 
         // Loads a sub-model MD3 and parents it either to a named tag on the parent model
-        // (first match from tagNames list) or, if no tag is found, directly to the parent root.
+        // (first match from tagNames list) or, if no tag is found, aligns it to the parent's
+        // muzzle (+z end) so the barrel sits at the front of the gun body.
         private void LoadAndAttachSubModel(string path, GameObject parentModel, string[] tagNames)
         {
             // Find a matching tag child transform
@@ -513,7 +514,6 @@ namespace ET.App
                 if (attachPoint != null) break;
             }
 
-            // Fallback: attach directly to the parent root transform (same coordinate space)
             Transform parent = attachPoint ?? parentModel.transform;
 
             var subGo = RuntimeResourceLoader.LoadMd3(path, parent);
@@ -522,13 +522,30 @@ namespace ET.App
                 Debug.LogWarning($"[ETGameManager] Sub-model not found: {path}");
                 return;
             }
+
             if (attachPoint == null)
             {
-                // No tag found — zero out local transform so it uses model-space coords directly
-                subGo.transform.localPosition = Vector3.zero;
+                // No tag: align the sub-model's -z face with the parent model's +z (muzzle) face.
+                // Both bounds are in the same local mesh space (Unity coords, EtToUnity applied).
+                Bounds gunBounds   = GetCombinedMeshBounds(parentModel);
+                Bounds subBounds   = GetCombinedMeshBounds(subGo);
+                bool   hasBoth     = gunBounds.size != Vector3.zero && subBounds.size != Vector3.zero;
+                if (hasBoth)
+                {
+                    float gunMuzzleZ  = gunBounds.center.z + gunBounds.extents.z;
+                    float subBackZ    = subBounds.center.z - subBounds.extents.z;
+                    float zOff        = gunMuzzleZ - subBackZ;
+                    subGo.transform.localPosition = new Vector3(0f, 0f, zOff);
+                    Debug.Log($"[ETGameManager] Sub-model z-aligned: gunMuzzle={gunMuzzleZ:F2} subBack={subBackZ:F2} offset={zOff:F2}");
+                }
+                else
+                {
+                    subGo.transform.localPosition = Vector3.zero;
+                }
                 subGo.transform.localRotation = Quaternion.identity;
                 subGo.transform.localScale    = Vector3.one;
             }
+
             SetLayerRecursive(subGo, ViewmodelLayer);
             foreach (var mr in subGo.GetComponentsInChildren<MeshRenderer>())
             {
@@ -536,6 +553,19 @@ namespace ET.App
                 mr.receiveShadows    = false;
             }
             Debug.Log($"[ETGameManager] Sub-model loaded: {path} → attached to '{parent.name}'");
+        }
+
+        private static Bounds GetCombinedMeshBounds(GameObject root)
+        {
+            Bounds b = default;
+            bool first = true;
+            foreach (var mf in root.GetComponentsInChildren<MeshFilter>())
+            {
+                if (mf.sharedMesh == null) continue;
+                if (first) { b = mf.sharedMesh.bounds; first = false; }
+                else b.Encapsulate(mf.sharedMesh.bounds);
+            }
+            return b;
         }
 
         private void DriveLocalPlayer()

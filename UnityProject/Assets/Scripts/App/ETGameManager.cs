@@ -442,7 +442,18 @@ namespace ET.App
                 }
                 usingFallback = true;
                 Debug.Log($"[ETGameManager] Using fallback viewmodel: {fallbackGun}");
-            }
+
+                // Log tags for debugging
+                foreach (Transform child in go.transform)
+                    if (child.name.StartsWith("tag_", System.StringComparison.OrdinalIgnoreCase))
+                        Debug.Log($"[ETGameManager] Found tag: {child.name} at {child.localPosition}");
+
+                // Load the barrel (slide) sub-model and attach it to the tag on the main model.
+                // The barrel is a separate MD3 that snaps onto tag_barrel or tag_weapon.
+                string barrelPath = axis
+                    ? "models/weapons2/akimbo_luger/v_akimbo_luger_barrel.md3"
+                    : "models/weapons2/akimbo_colt/v_akimbo_colt_barrel.md3";
+                LoadAndAttachSubModel(barrelPath, go, new[] { "tag_barrel", "tag_weapon", "tag_flash" });
 
             // Position the weapon in viewmodel-camera local space (lower-right, forward)
             go.transform.localPosition = new Vector3(5f, -8f, 24f);
@@ -484,6 +495,43 @@ namespace ET.App
             root.layer = layer;
             foreach (Transform child in root.transform)
                 SetLayerRecursive(child.gameObject, layer);
+        }
+
+        // Loads a sub-model MD3 and parents it either to a named tag on the parent model
+        // (first match from tagNames list) or, if no tag is found, directly to the parent root.
+        private void LoadAndAttachSubModel(string path, GameObject parentModel, string[] tagNames)
+        {
+            // Find a matching tag child transform
+            Transform attachPoint = null;
+            foreach (string tagName in tagNames)
+            {
+                attachPoint = parentModel.transform.Find(tagName);
+                if (attachPoint != null) break;
+            }
+
+            // Fallback: attach directly to the parent root transform (same coordinate space)
+            Transform parent = attachPoint ?? parentModel.transform;
+
+            var subGo = RuntimeResourceLoader.LoadMd3(path, parent);
+            if (subGo == null)
+            {
+                Debug.LogWarning($"[ETGameManager] Sub-model not found: {path}");
+                return;
+            }
+            if (attachPoint == null)
+            {
+                // No tag found — zero out local transform so it uses model-space coords directly
+                subGo.transform.localPosition = Vector3.zero;
+                subGo.transform.localRotation = Quaternion.identity;
+                subGo.transform.localScale    = Vector3.one;
+            }
+            SetLayerRecursive(subGo, ViewmodelLayer);
+            foreach (var mr in subGo.GetComponentsInChildren<MeshRenderer>())
+            {
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                mr.receiveShadows    = false;
+            }
+            Debug.Log($"[ETGameManager] Sub-model loaded: {path} → attached to '{parent.name}'");
         }
 
         private void DriveLocalPlayer()

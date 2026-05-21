@@ -37,6 +37,7 @@ namespace ET.Server
             DamageSystem.OnDamageResolved += ApplyDamageToEntity;
         }
 
+
         /// <summary>
         /// Force the static constructor to run.  Call once at game startup
         /// (e.g. from ServerGameLogic.G_InitGame).
@@ -46,7 +47,7 @@ namespace ET.Server
         // -----------------------------------------------------------------------
         // OnFireWeapon handler
         // -----------------------------------------------------------------------
-        private static void HandleFireWeapon(WeaponSystem.FireInfo fire)
+        private static void HandleFireWeapon(FireInfo fire)
         {
             if (WeaponSystem.IsSplashWeapon(fire.Weapon))
                 LaunchProjectile(fire);
@@ -57,7 +58,7 @@ namespace ET.Server
         // -----------------------------------------------------------------------
         // Hitscan (fire_lead equivalent)
         // -----------------------------------------------------------------------
-        private static void PerformHitscan(WeaponSystem.FireInfo fire)
+        private static void PerformHitscan(FireInfo fire)
         {
             Vector3 dir = fire.MuzzleDir.normalized;
 
@@ -128,7 +129,7 @@ namespace ET.Server
         // -----------------------------------------------------------------------
         // Projectile dispatch
         // -----------------------------------------------------------------------
-        private static void LaunchProjectile(WeaponSystem.FireInfo fire)
+        private static void LaunchProjectile(FireInfo fire)
         {
             var owner = ServerGameLogic.Entities[fire.ClientNum];
             if (owner == null) return;

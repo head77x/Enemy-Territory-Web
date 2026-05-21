@@ -201,6 +201,7 @@ namespace ET.App
                 ServerInit.SV_SpawnServer(MapName);
 
                 // Subscribe server-frame and client-think events
+                ServerMain.OnGameRunFrame    += ServerGameLogic.G_RunFrame;
                 ServerMain.OnGameRunFrame    += OnGameRunFrame;
                 SV_Client.OnClientEnterWorld += OnClientEnterWorld;
                 SV_Client.OnClientThink      += OnClientThink;
@@ -331,13 +332,15 @@ namespace ET.App
                 }
             }
 
+            // Read input first so this frame's buttons are in gc.LastCmd
+            // before G_RunFrame processes them inside SV_Frame.
+            if (LocalPlayerActive && !ETUIManager.MenuIsOpen)
+                DriveLocalPlayer();
+
             if (StartServer) ServerMain.SV_Frame(msec);
             if (StartClient) ClientMain.CL_Frame(msec);
 
             BotMain.BotAI_Think(Time.deltaTime);
-
-            if (LocalPlayerActive && !ETUIManager.MenuIsOpen)
-                DriveLocalPlayer();
 
             // Keep the audio listener at the camera's position
             var cam = Camera.main;
@@ -755,6 +758,7 @@ namespace ET.App
                 Destroy(_viewmodelCam.gameObject);
 
             ServerInit.OnSpawnServer -= OnMapSpawn;
+            ServerMain.OnGameRunFrame       -= ServerGameLogic.G_RunFrame;
             ServerMain.OnGameRunFrame       -= OnGameRunFrame;
             SV_Client.OnClientEnterWorld    -= OnClientEnterWorld;
             SV_Client.OnClientThink         -= OnClientThink;

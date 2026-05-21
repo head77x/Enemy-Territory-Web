@@ -385,8 +385,8 @@ namespace ET.App
             _viewmodelCam.clearFlags    = CameraClearFlags.Depth;
             _viewmodelCam.cullingMask   = 1 << ViewmodelLayer;
             _viewmodelCam.nearClipPlane = 0.5f;
-            _viewmodelCam.farClipPlane  = 200f;
-            _viewmodelCam.fieldOfView   = 70f;
+            _viewmodelCam.farClipPlane  = 600f;
+            _viewmodelCam.fieldOfView   = 20f;
             _viewmodelCam.depth         = cam.depth + 1;
 
             _viewmodelRoot = new GameObject("ViewWeaponRoot").transform;
@@ -456,8 +456,11 @@ namespace ET.App
                 LoadAndAttachSubModel(barrelPath, go, new[] { "tag_barrel", "tag_weapon", "tag_flash" });
             }
 
-            // Position the weapon in viewmodel-camera local space (lower-right, forward)
-            go.transform.localPosition = new Vector3(5f, -8f, 24f);
+            // Position the weapon in viewmodel-camera local space (lower-right, forward).
+            // Values are scaled for the narrow (20°) viewmodel FOV so the weapon
+            // sits at the same on-screen position as it would at z=24 with FOV=70°.
+            // Scale factor = tan(35°)/tan(10°) ≈ 4, keeping angular position identical.
+            go.transform.localPosition = new Vector3(20f, -32f, 96f);
             go.transform.localRotation = Quaternion.Euler(-5f, -10f, 0f);
             go.transform.localScale    = Vector3.one;
 
@@ -469,7 +472,7 @@ namespace ET.App
                 var handGo = RuntimeResourceLoader.LoadMd3(handPath, _viewmodelRoot);
                 if (handGo != null)
                 {
-                    handGo.transform.localPosition = new Vector3(5f, -8f, 24f);
+                    handGo.transform.localPosition = new Vector3(20f, -32f, 96f);
                     handGo.transform.localRotation = Quaternion.Euler(-5f, -10f, 0f);
                     handGo.transform.localScale    = Vector3.one;
                     SetLayerRecursive(handGo, ViewmodelLayer);

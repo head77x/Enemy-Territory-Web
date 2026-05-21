@@ -758,7 +758,7 @@ namespace ET.Server
             ps.Persistant[GameConst.PERS_KILLED]   = (short)savedDeaths;
             ps.TeamNum = savedTeam;
             ps.ClientNum = clientNum;
-            ps.Weapon  = DefaultWeaponForClass(savedClass);
+            ps.Weapon  = DefaultWeaponForClass(savedClass, savedTeam);
 
             // Position
             ps.Origin0 = origin.x;
@@ -1125,15 +1125,16 @@ namespace ET.Server
             return client.Pers.ClassType == GameConst.PC_MEDIC ? 125 : 100;
         }
 
-        private static int DefaultWeaponForClass(int classType)
+        private static int DefaultWeaponForClass(int classType, int team)
         {
+            bool axis = team == DamageSystem.TEAM_AXIS;
             switch (classType)
             {
-                case GameConst.PC_SOLDIER:   return GameConst.WP_FG42;
-                case GameConst.PC_MEDIC:     return GameConst.WP_THOMPSON;
-                case GameConst.PC_ENGINEER:  return GameConst.WP_KAR98;
-                case GameConst.PC_FIELDOPS:  return GameConst.WP_THOMPSON;
-                case GameConst.PC_COVERTOPS: return GameConst.WP_STEN;
+                case GameConst.PC_SOLDIER:   return axis ? GameConst.WP_MP40       : GameConst.WP_THOMPSON;
+                case GameConst.PC_MEDIC:     return axis ? GameConst.WP_MP40       : GameConst.WP_THOMPSON;
+                case GameConst.PC_ENGINEER:  return axis ? GameConst.WP_KAR98      : GameConst.WP_CARBINE;
+                case GameConst.PC_FIELDOPS:  return axis ? GameConst.WP_MP40       : GameConst.WP_THOMPSON;
+                case GameConst.PC_COVERTOPS: return axis ? GameConst.WP_FG42       : GameConst.WP_STEN;
                 default:                     return GameConst.WP_KNIFE;
             }
         }

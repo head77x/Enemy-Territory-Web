@@ -454,6 +454,7 @@ namespace ET.App
                     ? "models/weapons2/akimbo_luger/v_akimbo_luger_barrel.md3"
                     : "models/weapons2/akimbo_colt/v_akimbo_colt_barrel.md3";
                 LoadAndAttachSubModel(barrelPath, go, new[] { "tag_barrel", "tag_weapon", "tag_flash" });
+            }
 
             // Position the weapon in viewmodel-camera local space (lower-right, forward)
             go.transform.localPosition = new Vector3(5f, -8f, 24f);

@@ -123,6 +123,33 @@ namespace ET.Core
             return "";
         }
 
+        // FS_DiagnoseWeaponModels — logs PK3 entry counts and any weapon2 md3 paths per PK3
+        public static void FS_DiagnoseWeaponModels()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("[FileSystem] === Weapon model diagnostic ===");
+            foreach (var sp in _searchPaths)
+            {
+                if (sp is Pk3Archive pk3)
+                {
+                    var all = pk3.AllEntries();
+                    var wpn = new List<string>();
+                    foreach (var e in all)
+                        if (e.IndexOf("weapons2", StringComparison.OrdinalIgnoreCase) >= 0
+                            && e.EndsWith(".md3", StringComparison.OrdinalIgnoreCase))
+                            wpn.Add(e);
+                    sb.AppendLine($"  PK3 '{Path.GetFileName(pk3.FilePath)}': {all.Count} entries, {wpn.Count} weapons2 md3s");
+                    if (wpn.Count > 0)
+                        sb.AppendLine("    " + string.Join(", ", wpn));
+                }
+                else if (sp is LooseDirectory ld)
+                {
+                    sb.AppendLine($"  Dir '{ld.Root}'");
+                }
+            }
+            Debug.Log(sb.ToString());
+        }
+
         // FS_Shutdown — clear all search paths
         public static void FS_Shutdown()
         {
@@ -179,6 +206,8 @@ namespace ET.Core
             private ZipArchive            _zip;
             private bool                  _disposed;
 
+            public string FilePath => _path;
+
             public Pk3Archive(string path)
             {
                 _path = path;
@@ -187,6 +216,15 @@ namespace ET.Core
                 {
                     Debug.LogWarning($"[FileSystem] Failed to open PK3 {path}: {e.Message}");
                 }
+            }
+
+            public List<string> AllEntries()
+            {
+                var list = new List<string>();
+                if (_zip == null) return list;
+                foreach (var e in _zip.Entries)
+                    list.Add(e.FullName.Replace('\\', '/'));
+                return list;
             }
 
             private ZipArchive Zip => _zip;

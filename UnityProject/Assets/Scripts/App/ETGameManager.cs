@@ -91,6 +91,7 @@ namespace ET.App
             // ---- File system ----
             string etBase = Path.Combine(Application.streamingAssetsPath, "etmain");
             FileSystem.FS_AddGameDirectory(etBase);
+            FileSystem.FS_DiagnoseWeaponModels();
 
             // ---- Cvars ----
             CvarSystem.Set("sv_maxclients", MaxClients.ToString());
@@ -414,27 +415,66 @@ namespace ET.App
             var wri = ET.Client.CGameWeapons.CG_GetWeaponRenderInfo(weapon);
             if (wri == null || string.IsNullOrEmpty(wri.ModelPath)) return;
 
+            bool usingFallback = false;
+            string handPath = null;
+
             var go = RuntimeResourceLoader.LoadMd3(wri.ModelPath, _viewmodelRoot);
             if (go == null)
             {
                 Debug.LogWarning($"[ETGameManager] Viewmodel MD3 not found: {wri.ModelPath}");
-                return;
-            }
 
-            SetLayerRecursive(go, ViewmodelLayer);
+                // Fallback: akimbo sidearm viewmodels are always present in mp_bin.pk3.
+                // AXIS → luger, Allies → colt.
+                var ps = ServerGameLogic.Clients[LocalClientNum]?.PS;
+                bool axis = ps != null && ps.TeamNum == ET.Game.DamageSystem.TEAM_AXIS;
+                string fallbackGun  = axis
+                    ? "models/weapons2/akimbo_luger/v_akimbo_luger.md3"
+                    : "models/weapons2/akimbo_colt/v_akimbo_colt.md3";
+                handPath = axis
+                    ? "models/weapons2/akimbo_luger/v_akimbo_luger_hand.md3"
+                    : "models/weapons2/akimbo_colt/v_akimbo_colt_hand.md3";
 
-            // Viewmodel never casts or receives world shadows — ET renders weapons in a
-            // separate pass with their own lighting, independent of the world scene.
-            foreach (var mr in go.GetComponentsInChildren<MeshRenderer>())
-            {
-                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                mr.receiveShadows    = false;
+                go = RuntimeResourceLoader.LoadMd3(fallbackGun, _viewmodelRoot);
+                if (go == null)
+                {
+                    Debug.LogWarning($"[ETGameManager] Fallback viewmodel also not found: {fallbackGun}");
+                    return;
+                }
+                usingFallback = true;
+                Debug.Log($"[ETGameManager] Using fallback viewmodel: {fallbackGun}");
             }
 
             // Position the weapon in viewmodel-camera local space (lower-right, forward)
             go.transform.localPosition = new Vector3(5f, -8f, 24f);
             go.transform.localRotation = Quaternion.Euler(-5f, -10f, 0f);
             go.transform.localScale    = Vector3.one;
+
+            SetLayerRecursive(go, ViewmodelLayer);
+
+            // Also load the separate hand model for akimbo fallback weapons
+            if (usingFallback && handPath != null)
+            {
+                var handGo = RuntimeResourceLoader.LoadMd3(handPath, _viewmodelRoot);
+                if (handGo != null)
+                {
+                    handGo.transform.localPosition = new Vector3(5f, -8f, 24f);
+                    handGo.transform.localRotation = Quaternion.Euler(-5f, -10f, 0f);
+                    handGo.transform.localScale    = Vector3.one;
+                    SetLayerRecursive(handGo, ViewmodelLayer);
+                    foreach (var mr in handGo.GetComponentsInChildren<MeshRenderer>())
+                    {
+                        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                        mr.receiveShadows    = false;
+                    }
+                }
+            }
+
+            // Viewmodel never casts or receives world shadows
+            foreach (var mr in go.GetComponentsInChildren<MeshRenderer>())
+            {
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                mr.receiveShadows    = false;
+            }
 
             Debug.Log($"[ETGameManager] Viewmodel loaded: {wri.ModelPath}");
         }

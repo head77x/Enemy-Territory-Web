@@ -505,10 +505,20 @@ namespace ET.App
                 Debug.Log($"[ETGameManager] Attached gun body to tag_weapon: {wri.ModelPath}");
             }
 
-            // Position mirrors ET's CG_CalculateWeaponPosition offset
-            handsGo.transform.localPosition = new Vector3(4f, -8f, 8f);
-            handsGo.transform.localRotation = Quaternion.Euler(-5f, -10f, 0f);
+            // CG_CalculateWeaponPosition: hand.origin = cg.refdef.vieworg (no offset by default),
+            // hand.axis = cg.refdef.viewaxis. Since handsGo is a child of _viewmodelRoot which
+            // is a child of _viewmodelCam (synced to main camera each frame), local = identity.
+            handsGo.transform.localPosition = Vector3.zero;
+            handsGo.transform.localRotation = Quaternion.identity;
             handsGo.transform.localScale    = Vector3.one;
+
+            // Diagnostic: confirm tag_weapon was found on handsGo and gun body is attached
+            var tagWeaponCheck = handsGo.transform.Find("tag_weapon");
+            Debug.Log($"[ETGameManager] handsGo children: " +
+                      $"tag_weapon found={tagWeaponCheck != null}, " +
+                      $"gun body children={tagWeaponCheck?.childCount ?? 0}, " +
+                      $"handsGo localPos={handsGo.transform.localPosition}, " +
+                      $"localRot={handsGo.transform.localEulerAngles}");
 
             SetLayerRecursive(handsGo, ViewmodelLayer);
 
@@ -742,7 +752,9 @@ namespace ET.App
 
             var gc = ServerGameLogic.Clients[LocalClientNum];
             int weapAnim = gc?.PS?.WeapAnim ?? GameConst.WEAP_IDLE1;
-            int cgTime   = ServerGameLogic.Level.Time;
+            // Use Unity real-time (ms) as cg.time — ET client used client-predicted time
+            // that advances every render frame, not server tick rate (50ms steps).
+            int cgTime = Mathf.RoundToInt(Time.realtimeSinceStartup * 1000f);
 
             if (_weapAnimData == null) return;
 
@@ -751,6 +763,8 @@ namespace ET.App
                 out int oldFrame, out int frame, out float backlerp);
 
             // --- Tag-based animation (tag-only MDC hands model) ---
+            // Mirrors CG_PositionRotatedEntityOnTag: each frame, tag_weapon transform is
+            // interpolated between oldFrame and frame. Gun body (child of tag_weapon) follows.
             if (_handsTagAnim != null)
             {
                 int numF   = _handsTagAnim.NumFrames;
@@ -769,6 +783,21 @@ namespace ET.App
                     tagXform.localRotation = Quaternion.Slerp(
                         _handsTagAnim.TagRotations[fOld][ti],
                         _handsTagAnim.TagRotations[fCur][ti], lerp);
+                }
+
+                // Diagnostic once per second: log tag_weapon world position
+                if (Time.frameCount % 60 == 0)
+                {
+                    for (int ti = 0; ti < numTags; ti++)
+                    {
+                        var t = _handsTagAnim.TagTransforms[ti];
+                        if (t != null && _handsTagAnim.TagNames[ti] == "tag_weapon")
+                        {
+                            Debug.Log($"[DriveViewmodelAnim] tag_weapon worldPos={t.position:F2} " +
+                                      $"worldRot={t.eulerAngles:F1} localPos={t.localPosition:F2} " +
+                                      $"frame={fCur} oldFrame={fOld} backlerp={backlerp:F2}");
+                        }
+                    }
                 }
                 return;
             }

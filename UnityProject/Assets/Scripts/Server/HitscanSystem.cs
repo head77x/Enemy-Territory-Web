@@ -49,6 +49,7 @@ namespace ET.Server
         // -----------------------------------------------------------------------
         private static void HandleFireWeapon(FireInfo fire)
         {
+            Debug.Log($"[HitscanSystem] HandleFireWeapon weapon={fire.Weapon} client={fire.ClientNum} splash={WeaponSystem.IsSplashWeapon(fire.Weapon)}");
             if (WeaponSystem.IsSplashWeapon(fire.Weapon))
                 LaunchProjectile(fire);
             else

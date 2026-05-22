@@ -645,6 +645,9 @@ namespace ET.App
             if (buttons != 0)                   buttons |= Button.Any;
             cmd.Buttons = buttons;
 
+            if (Input.GetMouseButton(0))
+                Debug.Log($"[DriveLocalPlayer] LMB pressed → buttons=0x{buttons:X} weapon={ps.Weapon} pmType={ps.PmType}");
+
             cmd.Weapon = ps.Weapon;
 
             // Store as last cmd — G_RunClient picks it up on the next server tick
@@ -722,6 +725,7 @@ namespace ET.App
             // Restart timer whenever the animation state changes (toggle bit flip = new anim).
             if (rawWeapAnim != _viewmodelLastWeapAnim)
             {
+                Debug.Log($"[Viewmodel] WeapAnim changed: {_viewmodelLastWeapAnim} → {rawWeapAnim} (animState={animState})");
                 _viewmodelAnimTime     = 0f;
                 _viewmodelLastWeapAnim = rawWeapAnim;
             }

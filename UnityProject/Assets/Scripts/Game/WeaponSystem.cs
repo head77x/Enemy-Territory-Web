@@ -396,8 +396,12 @@ namespace ET.Game
         public static void FireWeapon(int clientNum, ET.Network.PlayerState ps,
             Vector3 muzzleOrigin, Vector3 muzzleDir, int weapon)
         {
+            Debug.Log($"[WeaponSystem] FireWeapon client={clientNum} weapon={weapon} subscribers={OnFireWeapon?.GetInvocationList()?.Length ?? 0}");
             if (weapon <= GameConst.WP_NONE || weapon >= GameConst.WP_NUM_WEAPONS)
+            {
+                Debug.Log($"[WeaponSystem] FireWeapon REJECTED: weapon={weapon} WP_NONE={GameConst.WP_NONE} WP_NUM={GameConst.WP_NUM_WEAPONS}");
                 return;
+            }
 
             ref readonly WeaponInfo wi  = ref GetWeaponInfo(weapon);
             int mod = G_MODForWeapon(weapon);

@@ -528,6 +528,8 @@ namespace ET.Server
 
             // Fire weapon if attack button is held and weapon ready
             bool attackDown = (cmd.Buttons & Button.Attack) != 0;
+            if (attackDown)
+                Debug.Log($"[ClientThink] Attack pressed client={ps.ClientNum} pmType={ps.PmType} weapon={ps.Weapon}");
             if (attackDown && ps.PmType == GameConst.PM_NORMAL)
             {
                 WeaponSystem.FireWeaponFromCmd(ps.ClientNum, ps, cmd);

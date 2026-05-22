@@ -401,8 +401,10 @@ namespace ET.App
         }
 
         /// <summary>
-        /// Loads the real MD3 weapon model for <paramref name="weapon"/> from the
-        /// PK3 virtual filesystem and attaches it to the viewmodel camera.
+        /// Mirrors ET's CG_AddViewWeapon setup:
+        ///   hand.hModel = weapon->handsModel  (animated hands model)
+        ///   gun.hModel  = weapon->weaponModel[W_FP_MODEL] (gun body on tag_weapon)
+        /// Loads both models from the PK3 virtual filesystem and attaches them.
         /// Called every DriveLocalPlayer frame; no-ops if the weapon hasn't changed.
         /// </summary>
         private void UpdateViewmodel(int weapon)
@@ -420,29 +422,45 @@ namespace ET.App
             if (weapon <= GameConst.WP_NONE || _viewmodelRoot == null) return;
 
             var wri = ET.Client.CGameWeapons.CG_GetWeaponRenderInfo(weapon);
-            if (wri == null || string.IsNullOrEmpty(wri.ModelPath)) return;
+            if (wri == null) return;
 
             bool usingFallback = false;
-            string handPath = null;
 
-            var go = RuntimeResourceLoader.LoadMd3(wri.ModelPath, _viewmodelRoot);
-            if (go == null)
+            // --- Load animation root (hand.hModel = weapon->handsModel) ---
+            // This is the multi-frame animated model that drives the weapon animation.
+            // The gun body will be attached to its tag_weapon.
+            GameObject handsGo = null;
+            if (!string.IsNullOrEmpty(wri.HandsModelPath))
             {
-                Debug.LogWarning($"[ETGameManager] Viewmodel MD3 not found: {wri.ModelPath}");
+                handsGo = RuntimeResourceLoader.LoadMd3(wri.HandsModelPath, _viewmodelRoot);
+                if (handsGo == null)
+                    Debug.LogWarning($"[ETGameManager] handsModel not found: {wri.HandsModelPath}");
+                else
+                    Debug.Log($"[ETGameManager] Loaded handsModel: {wri.HandsModelPath}");
+            }
+
+            if (handsGo == null && !string.IsNullOrEmpty(wri.ModelPath))
+            {
+                // No dedicated hands model — fall back to loading the gun body directly
+                // (some weapons pack everything into one model file)
+                handsGo = RuntimeResourceLoader.LoadMd3(wri.ModelPath, _viewmodelRoot);
+                if (handsGo != null)
+                    Debug.Log($"[ETGameManager] Loaded combined viewmodel (no handsModel): {wri.ModelPath}");
+            }
+
+            if (handsGo == null)
+            {
+                Debug.LogWarning($"[ETGameManager] No viewmodel found for weapon {weapon}; trying akimbo fallback");
 
                 // Fallback: akimbo sidearm viewmodels are always present in mp_bin.pk3.
-                // AXIS → luger, Allies → colt.
                 var ps = ServerGameLogic.Clients[LocalClientNum]?.PS;
                 bool axis = ps != null && ps.TeamNum == ET.Game.DamageSystem.TEAM_AXIS;
                 string fallbackGun  = axis
                     ? "models/weapons2/akimbo_luger/v_akimbo_luger.md3"
                     : "models/weapons2/akimbo_colt/v_akimbo_colt.md3";
-                handPath = axis
-                    ? "models/weapons2/akimbo_luger/v_akimbo_luger_hand.md3"
-                    : "models/weapons2/akimbo_colt/v_akimbo_colt_hand.md3";
 
-                go = RuntimeResourceLoader.LoadMd3(fallbackGun, _viewmodelRoot);
-                if (go == null)
+                handsGo = RuntimeResourceLoader.LoadMd3(fallbackGun, _viewmodelRoot);
+                if (handsGo == null)
                 {
                     Debug.LogWarning($"[ETGameManager] Fallback viewmodel also not found: {fallbackGun}");
                     return;
@@ -450,48 +468,14 @@ namespace ET.App
                 usingFallback = true;
                 Debug.Log($"[ETGameManager] Using fallback viewmodel: {fallbackGun}");
 
-                // Log tags for debugging
-                foreach (Transform child in go.transform)
-                    if (child.name.StartsWith("tag_", System.StringComparison.OrdinalIgnoreCase))
-                        Debug.Log($"[ETGameManager] Found tag: {child.name} at {child.localPosition}");
-
-                // Load the barrel (slide) sub-model and attach it to the tag on the main model.
-                // The barrel is a separate MD3 that snaps onto tag_barrel or tag_weapon.
                 string barrelPath = axis
                     ? "models/weapons2/akimbo_luger/v_akimbo_luger_barrel.md3"
                     : "models/weapons2/akimbo_colt/v_akimbo_colt_barrel.md3";
-                LoadAndAttachSubModel(barrelPath, go, new[] { "tag_barrel", "tag_weapon", "tag_flash" });
-            }
+                LoadAndAttachSubModel(barrelPath, handsGo, new[] { "tag_barrel", "tag_weapon", "tag_flash" });
 
-            // Position mirrors ET's CG_CalculateWeaponPosition offset:
-            // +8 forward, +4 right, -8 up (quake units) → Unity (4, -8, 8).
-            // The MD3 vertex coordinates already encode the gun's position relative to
-            // this origin, so no further scaling is needed.
-            go.transform.localPosition = new Vector3(4f, -8f, 8f);
-            go.transform.localRotation = Quaternion.Euler(-5f, -10f, 0f);
-            go.transform.localScale    = Vector3.one;
-
-            SetLayerRecursive(go, ViewmodelLayer);
-
-            // Load weapon animation data from weapons/*.weap (CG_ParseWeaponConfig equivalent).
-            // Try the real weapon first; on fallback try the akimbo_colt weap.
-            _weapAnimData = null;
-            string weapPath = ET.Client.WeaponAnimSystem.WeapFilePath(weapon);
-            if (weapPath != null)
-                _weapAnimData = ET.Client.WeaponAnimData.Load(weapPath);
-            if (_weapAnimData == null && usingFallback)
-            {
-                var ps2 = ServerGameLogic.Clients[LocalClientNum]?.PS;
-                bool axis2 = ps2 != null && ps2.TeamNum == ET.Game.DamageSystem.TEAM_AXIS;
-                string fbWeap = axis2 ? "weapons/akimbo_luger.weap" : "weapons/akimbo_colt.weap";
-                _weapAnimData = ET.Client.WeaponAnimData.Load(fbWeap);
-            }
-            // Reset lerpFrame so CG_RunWeapLerpFrame re-initialises on next call
-            _weapLerpFrame = new ET.Client.WeapLerpFrame();
-
-            // Also load the separate hand model for akimbo fallback weapons
-            if (usingFallback && handPath != null)
-            {
+                string handPath = axis
+                    ? "models/weapons2/akimbo_luger/v_akimbo_luger_hand.md3"
+                    : "models/weapons2/akimbo_colt/v_akimbo_colt_hand.md3";
                 var handGo = RuntimeResourceLoader.LoadMd3(handPath, _viewmodelRoot);
                 if (handGo != null)
                 {
@@ -506,24 +490,59 @@ namespace ET.App
                     }
                 }
             }
+            else if (!string.IsNullOrEmpty(wri.HandsModelPath) && !string.IsNullOrEmpty(wri.ModelPath))
+            {
+                // Attach gun body (W_FP_MODEL) to tag_weapon on the hands model.
+                // Mirrors CG_AddPlayerWeapon: gun.hModel = weapon->weaponModel[W_FP_MODEL]
+                //   then CG_PositionRotatedEntityOnTag(&gun, parent, "tag_weapon")
+                LoadAndAttachSubModel(wri.ModelPath, handsGo, new[] { "tag_weapon", "tag_weapon2" });
+                Debug.Log($"[ETGameManager] Attached gun body to tag_weapon: {wri.ModelPath}");
+            }
+
+            // Position mirrors ET's CG_CalculateWeaponPosition offset
+            handsGo.transform.localPosition = new Vector3(4f, -8f, 8f);
+            handsGo.transform.localRotation = Quaternion.Euler(-5f, -10f, 0f);
+            handsGo.transform.localScale    = Vector3.one;
+
+            SetLayerRecursive(handsGo, ViewmodelLayer);
 
             // Viewmodel never casts or receives world shadows
-            foreach (var r in go.GetComponentsInChildren<Renderer>())
+            foreach (var r in _viewmodelRoot.GetComponentsInChildren<Renderer>())
             {
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 r.receiveShadows    = false;
             }
 
+            // --- Load animation data (CG_ParseWeaponConfig equivalent) ---
+            // Use weaponConfig path from the .weap file (simple line format),
+            // NOT the .weap file itself (which is PC-format / weaponDef).
+            _weapAnimData = null;
+            if (!string.IsNullOrEmpty(wri.WeaponConfigPath))
+            {
+                _weapAnimData = ET.Client.WeaponAnimData.Load(wri.WeaponConfigPath);
+                Debug.Log($"[ETGameManager] WeaponConfig '{wri.WeaponConfigPath}': " +
+                          $"{(_weapAnimData != null ? "loaded" : "not found")}");
+            }
+            if (_weapAnimData == null && usingFallback)
+            {
+                var ps2 = ServerGameLogic.Clients[LocalClientNum]?.PS;
+                bool axis2 = ps2 != null && ps2.TeamNum == ET.Game.DamageSystem.TEAM_AXIS;
+                string fbWeap = axis2 ? "weapons/akimbo_luger.weap" : "weapons/akimbo_colt.weap";
+                _weapAnimData = ET.Client.WeaponAnimData.Load(fbWeap);
+            }
+            // Reset lerpFrame so CG_RunWeapLerpFrame re-initialises on next call
+            _weapLerpFrame = new ET.Client.WeapLerpFrame();
+
             // Scan ALL SMRs now that every sub-model is attached, take the max blend shape count.
-            // ET animates all parts in lockstep: the sub-model with the most frames drives the range.
             int maxBlendShapes = 0;
             foreach (var smr in _viewmodelRoot.GetComponentsInChildren<SkinnedMeshRenderer>())
                 if (smr.sharedMesh != null)
                     maxBlendShapes = Mathf.Max(maxBlendShapes, smr.sharedMesh.blendShapeCount);
             _viewmodelNumFrames = maxBlendShapes + 1;
 
-            Debug.Log($"[ETGameManager] Viewmodel frames={_viewmodelNumFrames} weapon={weapon} animData={(_weapAnimData != null ? "loaded" : "missing")}");
-            Debug.Log($"[ETGameManager] Viewmodel loaded: {wri.ModelPath}");
+            Debug.Log($"[ETGameManager] Viewmodel ready: weapon={weapon} frames={_viewmodelNumFrames} " +
+                      $"animData={(_weapAnimData != null ? "loaded" : "missing")} " +
+                      $"handsModel='{wri.HandsModelPath}' gunBody='{wri.ModelPath}'");
         }
 
         private static void SetLayerRecursive(GameObject root, int layer)

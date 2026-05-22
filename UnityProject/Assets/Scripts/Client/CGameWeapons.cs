@@ -13,7 +13,9 @@ namespace ET.Client
 {
     public class WeaponRenderInfo
     {
-        public string   ModelPath;
+        public string   ModelPath;          // gun-body model (W_FP_MODEL / viewModel)
+        public string   HandsModelPath;     // animated hands model (handsModel from .weap)
+        public string   WeaponConfigPath;   // animation data file (weaponConfig from .weap)
         public string   FlashModelPath;
         public string   BrassModelPath;
         public string   HandModelPath;
@@ -189,9 +191,21 @@ namespace ET.Client
             if (weaponNum <= GameConst.WP_NONE || weaponNum >= GameConst.MAX_WEAPONS)
                 return;
 
+            // CG_RegisterWeaponFromWeaponFile: parse the PC-format weaponDef file
+            // to get the animated hands model path and animation config path.
+            string weapFilePath = WeaponAnimSystem.WeapFilePath(weaponNum);
+            WeaponDefInfo defInfo = weapFilePath != null
+                ? WeaponDefParser.ParseWeaponFile(weapFilePath)
+                : null;
+
             var wri = new WeaponRenderInfo
             {
-                ModelPath          = ModelPath(weaponNum),
+                // Gun body: prefer viewModel from .weap, fall back to our hard-coded path
+                ModelPath          = defInfo?.ViewModelPath ?? ModelPath(weaponNum),
+                // Animated hands model (what ET calls handsModel / hand.hModel)
+                HandsModelPath     = defInfo?.HandsModelPath,
+                // Simple-line-format animation data file
+                WeaponConfigPath   = defInfo?.WeaponConfigPath,
                 FlashModelPath     = "models/weapons2/flash/flash.md3",
                 BrassModelPath     = "models/weapons2/brass/brass.md3",
                 HandModelPath      = "models/weapons2/hands/hands.md3",

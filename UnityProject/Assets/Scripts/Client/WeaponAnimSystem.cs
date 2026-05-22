@@ -1,12 +1,15 @@
 // Ported from: src/cgame/cg_weapons.c
-//   CG_ParseWeaponConfig, CG_RunWeapLerpFrame, CG_WeaponAnimation,
+//   CG_ParseWeaponConfig, CG_RegisterWeaponFromWeaponFile,
+//   CG_RunWeapLerpFrame, CG_WeaponAnimation,
 //   CG_SetWeapLerpFrameAnimation, CG_ClearWeapLerpFrame
 // Original: Wolfenstein: Enemy Territory GPL Source Code
 // Copyright (C) 1999-2010 id Software LLC, a ZeniMax Media company.
 
 using System;
+using System.Collections.Generic;
 using ET.Core;
 using ET.Game;
+using UnityEngine;
 
 namespace ET.Client
 {
@@ -39,8 +42,190 @@ namespace ET.Client
     }
 
     // -------------------------------------------------------------------
+    // Holds paths extracted from the PC-format weaponDef { client { } } file.
+    // Mirrors the relevant fields of weaponInfo_t populated by
+    // CG_RegisterWeaponFromWeaponFile / CG_RW_ParseClient.
+    // -------------------------------------------------------------------
+    public class WeaponDefInfo
+    {
+        public string HandsModelPath;   // handsModel — animated first-person hands
+        public string WeaponConfigPath; // weaponConfig — simple-line-format anim data
+        public string ViewModelPath;    // viewModel — gun body attached to tag_weapon
+    }
+
+    // -------------------------------------------------------------------
+    // Parses the PC-format "weaponDef { client { ... } }" file.
+    // Mirrors CG_RegisterWeaponFromWeaponFile + CG_RW_ParseClient in cg_weapons.c.
+    // The ET precompiled-script (PC) tokenizer produces space-separated tokens;
+    // we replicate that with a simple whitespace split after stripping comments.
+    // -------------------------------------------------------------------
+    public static class WeaponDefParser
+    {
+        // CG_RegisterWeaponFromWeaponFile equivalent.
+        // Reads the PC-format .weap file and extracts handsModel / weaponConfig / viewModel.
+        public static WeaponDefInfo ParseWeaponFile(string virtualPath)
+        {
+            string text = FileSystem.FS_ReadFileText(virtualPath);
+            if (string.IsNullOrEmpty(text))
+            {
+                Debug.LogWarning($"[WeaponDefParser] '{virtualPath}' not found");
+                return null;
+            }
+
+            // Strip C-style comments (COM_Parse behaviour)
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"//[^\n]*", " ");
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"/\*.*?\*/", " ",
+                System.Text.RegularExpressions.RegexOptions.Singleline);
+
+            var tokens = new Queue<string>(
+                text.Split(new char[] { ' ', '\t', '\r', '\n' },
+                           StringSplitOptions.RemoveEmptyEntries));
+
+            var info = new WeaponDefInfo();
+
+            // Expect: weaponDef {
+            if (!Expect(tokens, "weaponDef"))
+            {
+                Debug.LogWarning($"[WeaponDefParser] '{virtualPath}': expected 'weaponDef'");
+                return null;
+            }
+            if (!Expect(tokens, "{"))
+            {
+                Debug.LogWarning($"[WeaponDefParser] '{virtualPath}': expected '{{' after weaponDef");
+                return null;
+            }
+
+            // Scan the top-level block for 'client { }' (and skip other blocks)
+            while (tokens.Count > 0)
+            {
+                string tok = tokens.Dequeue();
+                if (tok == "}") break;  // end of weaponDef block
+
+                if (string.Equals(tok, "client", StringComparison.OrdinalIgnoreCase))
+                {
+                    ParseClientBlock(tokens, info, virtualPath);
+                }
+                else
+                {
+                    // Skip any other block (e.g. 'server { }') by consuming until matching '}'
+                    SkipBlock(tokens);
+                }
+            }
+
+            Debug.Log($"[WeaponDefParser] '{virtualPath}': handsModel='{info.HandsModelPath}' " +
+                      $"weaponConfig='{info.WeaponConfigPath}' viewModel='{info.ViewModelPath}'");
+            return info;
+        }
+
+        // Parses: client { handsModel ... weaponConfig ... viewModel ... ... }
+        private static void ParseClientBlock(Queue<string> tokens, WeaponDefInfo info, string src)
+        {
+            if (!Expect(tokens, "{"))
+            {
+                Debug.LogWarning($"[WeaponDefParser] '{src}': expected '{{' after client");
+                return;
+            }
+
+            while (tokens.Count > 0)
+            {
+                string key = tokens.Dequeue();
+                if (key == "}") return;
+
+                if (string.Equals(key, "handsModel", StringComparison.OrdinalIgnoreCase))
+                {
+                    info.HandsModelPath = NextToken(tokens);
+                }
+                else if (string.Equals(key, "weaponConfig", StringComparison.OrdinalIgnoreCase))
+                {
+                    info.WeaponConfigPath = NextToken(tokens);
+                }
+                else if (string.Equals(key, "viewModel", StringComparison.OrdinalIgnoreCase))
+                {
+                    // viewModel is under a viewType sub-block; next token may be "fp" or "{"
+                    // CG_RW_ParseViewType reads an int then a sub-block. Skip for now.
+                    string next = tokens.Count > 0 ? tokens.Peek() : null;
+                    if (next != null && next != "{" && !IsKnownKey(next))
+                        tokens.Dequeue(); // consume viewType index
+                    if (tokens.Count > 0 && tokens.Peek() == "{")
+                    {
+                        // Inside the viewModel sub-block, first "model" token gives path
+                        tokens.Dequeue(); // consume "{"
+                        while (tokens.Count > 0)
+                        {
+                            string vk = tokens.Dequeue();
+                            if (vk == "}") break;
+                            if (string.Equals(vk, "model", StringComparison.OrdinalIgnoreCase))
+                            {
+                                string path = NextToken(tokens);
+                                if (info.ViewModelPath == null)
+                                    info.ViewModelPath = path;
+                            }
+                            else
+                                SkipValue(tokens);
+                        }
+                    }
+                }
+                else
+                {
+                    // Skip value (may be a sub-block or single token)
+                    SkipValue(tokens);
+                }
+            }
+        }
+
+        private static bool IsKnownKey(string s)
+        {
+            return s == "{" || s == "}" ||
+                   string.Equals(s, "handsModel",    StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(s, "weaponConfig",  StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(s, "viewModel",     StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(s, "flashModel",    StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(s, "flashSound",    StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(s, "model",         StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(s, "standModel",    StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(s, "pickupModel",   StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Consumes tokens until end of a matching { } block (opening brace already consumed)
+        private static void SkipBlock(Queue<string> tokens)
+        {
+            if (tokens.Count == 0 || tokens.Peek() != "{") return;
+            tokens.Dequeue(); // consume "{"
+            int depth = 1;
+            while (tokens.Count > 0 && depth > 0)
+            {
+                string t = tokens.Dequeue();
+                if (t == "{") depth++;
+                else if (t == "}") depth--;
+            }
+        }
+
+        // Skips a single value token or a sub-block
+        private static void SkipValue(Queue<string> tokens)
+        {
+            if (tokens.Count == 0) return;
+            if (tokens.Peek() == "{")
+                SkipBlock(tokens);
+            else
+                tokens.Dequeue();
+        }
+
+        private static bool Expect(Queue<string> tokens, string expected)
+        {
+            if (tokens.Count == 0) return false;
+            string t = tokens.Dequeue();
+            return string.Equals(t, expected, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string NextToken(Queue<string> tokens)
+        {
+            return tokens.Count > 0 ? tokens.Dequeue() : null;
+        }
+    }
+
+    // -------------------------------------------------------------------
     // weaponInfo_t.weapAnimations[] equivalent
-    // Parsed from "weapons/<name>.weap" — same format as CG_ParseWeaponConfig.
+    // Parsed from the simple-line-format file pointed to by weaponConfig.
     // -------------------------------------------------------------------
     public class WeaponAnimData
     {

@@ -64,34 +64,49 @@ namespace ET.Client
             if (string.IsNullOrEmpty(text))
                 return null;
 
-            // COM_Parse equivalent: strip C-style comments before tokenizing
+            // COM_Parse strips C-style comments before tokenizing
             text = System.Text.RegularExpressions.Regex.Replace(text, @"//[^\n]*", " ");
             text = System.Text.RegularExpressions.Regex.Replace(text, @"/\*.*?\*/", " ",
                 System.Text.RegularExpressions.RegexOptions.Singleline);
 
-            var data = new WeaponAnimData();
             var tokens = text.Split(new char[] { ' ', '\t', '\r', '\n' },
                 StringSplitOptions.RemoveEmptyEntries);
             int t = 0;
             bool newfmt = false;
 
-            // optional "newfmt" header
-            if (t < tokens.Length && string.Equals(tokens[t], "newfmt",
-                StringComparison.OrdinalIgnoreCase))
+            // Pre-loop: mirrors the C while(1) that reads optional header tokens.
+            // Skips any unknown string tokens; breaks when a digit-starting token
+            // is found (unget by leaving t unchanged); sets newfmt if seen.
+            while (t < tokens.Length)
             {
-                newfmt = true;
+                string tok = tokens[t];
+                if (string.Equals(tok, "newfmt", StringComparison.OrdinalIgnoreCase))
+                {
+                    newfmt = true;
+                    t++;
+                    continue;
+                }
+                // digit-starting token → start of animation data (COM_Parse "unget")
+                if (tok.Length > 0 && (char.IsDigit(tok[0]) || tok[0] == '-'))
+                    break;
+                // unknown string token → skip (matches Com_Printf path in C)
                 t++;
             }
 
+            var data = new WeaponAnimData();
+
             for (int i = 0; i < MAX_WP_ANIMATIONS; i++)
             {
+                // need at least 4 tokens for one animation entry
                 if (t + 3 >= tokens.Length) break;
 
-                int firstFrame  = int.Parse(tokens[t++]);
-                int numFrames   = int.Parse(tokens[t++]);
-                float fps       = float.Parse(tokens[t++],
-                    System.Globalization.CultureInfo.InvariantCulture);
-                int loopFrames  = int.Parse(tokens[t++]);
+                // atoi/atof never throw; mirror that with TryParse + default 0
+                int.TryParse(tokens[t++], out int firstFrame);
+                int.TryParse(tokens[t++], out int numFrames);
+                float.TryParse(tokens[t++],
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out float fps);
+                int.TryParse(tokens[t++], out int loopFrames);
 
                 if (fps == 0f) fps = 1f;
                 int frameLerp = (int)(1000f / fps);
@@ -102,10 +117,11 @@ namespace ET.Client
                 int moveSpeed = 0;
                 if (newfmt && t + 2 < tokens.Length)
                 {
-                    moveSpeed  = int.Parse(tokens[t++]);           // barrel anim bits
-                    if (int.Parse(tokens[t++]) != 0)               // animated weapon bit
-                        moveSpeed |= (1 << 7);                     // W_MAX_PARTS = 7
-                    moveSpeed |= (int.Parse(tokens[t++]) << 8);    // hide bits
+                    int.TryParse(tokens[t++], out moveSpeed);
+                    int.TryParse(tokens[t++], out int animBit);
+                    if (animBit != 0) moveSpeed |= (1 << 7);
+                    int.TryParse(tokens[t++], out int hideBits);
+                    moveSpeed |= (hideBits << 8);
                 }
 
                 data.Animations[i] = new WeapAnim

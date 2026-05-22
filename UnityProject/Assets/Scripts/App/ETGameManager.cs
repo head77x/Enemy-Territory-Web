@@ -395,7 +395,7 @@ namespace ET.App
             _viewmodelCam.cullingMask   = 1 << ViewmodelLayer;
             _viewmodelCam.nearClipPlane = 0.01f;
             _viewmodelCam.farClipPlane  = 600f;
-            _viewmodelCam.fieldOfView   = 60f;
+            _viewmodelCam.fieldOfView   = 90f;  // ET default cg_fov=90; hand mesh sits ~54° below center
             _viewmodelCam.depth         = cam.depth + 1;
 
             _viewmodelRoot = new GameObject("ViewWeaponRoot").transform;
@@ -819,7 +819,7 @@ namespace ET.App
                         _handsTagAnim.TagRotations[fCur][ti], lerp);
                 }
 
-                // Diagnostic once per second: log tag_weapon world position
+                // Diagnostic once per second: log tag_weapon world position + runtime renderer visibility
                 if (Time.frameCount % 60 == 0)
                 {
                     for (int ti = 0; ti < numTags; ti++)
@@ -832,6 +832,9 @@ namespace ET.App
                                       $"frame={fCur} oldFrame={fOld} backlerp={backlerp:F2}");
                         }
                     }
+                    // Runtime renderer visibility (camera has moved by now)
+                    foreach (var r in _viewmodelRoot.GetComponentsInChildren<Renderer>(true))
+                        Debug.Log($"[VMRender-rt] '{r.gameObject.name}' isVisible={r.isVisible} bounds={r.bounds.center:F1}");
                 }
                 return;
             }

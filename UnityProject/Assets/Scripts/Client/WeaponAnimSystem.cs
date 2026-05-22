@@ -64,6 +64,11 @@ namespace ET.Client
             if (string.IsNullOrEmpty(text))
                 return null;
 
+            // COM_Parse equivalent: strip C-style comments before tokenizing
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"//[^\n]*", " ");
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"/\*.*?\*/", " ",
+                System.Text.RegularExpressions.RegexOptions.Singleline);
+
             var data = new WeaponAnimData();
             var tokens = text.Split(new char[] { ' ', '\t', '\r', '\n' },
                 StringSplitOptions.RemoveEmptyEntries);

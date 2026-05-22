@@ -75,6 +75,8 @@ namespace ET.App
         // CG_WeaponAnimation pipeline state (CG_RunWeapLerpFrame equivalent)
         private ET.Client.WeaponAnimData  _weapAnimData;   // parsed from weapons/*.weap
         private ET.Client.WeapLerpFrame   _weapLerpFrame = new ET.Client.WeapLerpFrame();
+        // Per-frame tag animation component on the hands model (null for blend-shape models)
+        private MdcTagAnimation           _handsTagAnim;
 
         // ----------------------------------------------------------------
         // MonoBehaviour lifecycle
@@ -413,6 +415,7 @@ namespace ET.App
             _viewmodelWeapon = weapon;
 
             // Remove old mesh
+            _handsTagAnim = null;
             if (_viewmodelRoot != null)
             {
                 for (int i = _viewmodelRoot.childCount - 1; i >= 0; i--)
@@ -436,7 +439,10 @@ namespace ET.App
                 if (handsGo == null)
                     Debug.LogWarning($"[ETGameManager] handsModel not found: {wri.HandsModelPath}");
                 else
+                {
                     Debug.Log($"[ETGameManager] Loaded handsModel: {wri.HandsModelPath}");
+                    _handsTagAnim = handsGo.GetComponent<MdcTagAnimation>();
+                }
             }
 
             if (handsGo == null && !string.IsNullOrEmpty(wri.ModelPath))
@@ -533,15 +539,26 @@ namespace ET.App
             // Reset lerpFrame so CG_RunWeapLerpFrame re-initialises on next call
             _weapLerpFrame = new ET.Client.WeapLerpFrame();
 
-            // Scan ALL SMRs now that every sub-model is attached, take the max blend shape count.
-            int maxBlendShapes = 0;
-            foreach (var smr in _viewmodelRoot.GetComponentsInChildren<SkinnedMeshRenderer>())
-                if (smr.sharedMesh != null)
-                    maxBlendShapes = Mathf.Max(maxBlendShapes, smr.sharedMesh.blendShapeCount);
-            _viewmodelNumFrames = maxBlendShapes + 1;
+            // Determine frame count. Tag-animated hands models use per-frame tag transforms
+            // (v_thompson_hand.mdc has 66 frames, 0 surfaces). Mesh models use blend shapes.
+            if (_handsTagAnim != null)
+            {
+                _viewmodelNumFrames = _handsTagAnim.NumFrames;
+                Debug.Log($"[ETGameManager] Tag-animated hands: {_handsTagAnim.NumFrames} frames, " +
+                          $"tags=[{string.Join(",", _handsTagAnim.TagNames)}]");
+            }
+            else
+            {
+                int maxBlendShapes = 0;
+                foreach (var smr in _viewmodelRoot.GetComponentsInChildren<SkinnedMeshRenderer>())
+                    if (smr.sharedMesh != null)
+                        maxBlendShapes = Mathf.Max(maxBlendShapes, smr.sharedMesh.blendShapeCount);
+                _viewmodelNumFrames = maxBlendShapes + 1;
+            }
 
             Debug.Log($"[ETGameManager] Viewmodel ready: weapon={weapon} frames={_viewmodelNumFrames} " +
                       $"animData={(_weapAnimData != null ? "loaded" : "missing")} " +
+                      $"tagAnim={(_handsTagAnim != null ? "yes" : "no")} " +
                       $"handsModel='{wri.HandsModelPath}' gunBody='{wri.ModelPath}'");
         }
 
@@ -710,36 +727,54 @@ namespace ET.App
             }
         }
 
-        // CG_WeaponAnimation equivalent — drives viewmodel blend-shape animation.
-        // Reads ps.WeapAnim (set by pmove / PM_Weapon), passes it through
-        // CG_RunWeapLerpFrame to compute oldFrame/frame/backlerp, then applies
-        // those to each SkinnedMeshRenderer's blend-shape weights.
+        // CG_WeaponAnimation equivalent — drives viewmodel animation.
         //
-        // Frame encoding (matches BuildMd3Object / Md3Importer):
-        //   blend shape i  ↔  absolute MD3 frame (i + 1)
-        //   frame 0 = base mesh (no blend shape)
+        // For tag-only MDC hands models (v_thompson_hand.mdc, numSurfs=0):
+        //   Interpolates per-frame tag transforms and applies them to child tag Transforms.
+        //   The gun body (v_thompson.mdc) is parented to tag_weapon, so it moves with it.
+        //   Mirrors CG_PositionRotatedEntityOnTag(&gun, parent, "tag_weapon").
         //
-        // If _weapAnimData is null (weap file not found) or the model has 1 frame,
-        // the weight loop simply never fires — same as ET with a missing model.
+        // For mesh models with blend shapes:
+        //   Sets blend-shape weights to morph between oldFrame and frame.
         private void DriveViewmodelAnimation()
         {
             if (_viewmodelRoot == null || _viewmodelNumFrames <= 1) return;
 
             var gc = ServerGameLogic.Clients[LocalClientNum];
             int weapAnim = gc?.PS?.WeapAnim ?? GameConst.WEAP_IDLE1;
+            int cgTime   = ServerGameLogic.Level.Time;
 
-            // Use level time as the cg.time equivalent (milliseconds).
-            int cgTime = ServerGameLogic.Level.Time;
-
-            // Without animation data we cannot advance frames — leave model at frame 0.
             if (_weapAnimData == null) return;
 
             ET.Client.WeaponAnimSystem.WeaponAnimation(
                 _weapAnimData, _weapLerpFrame, weapAnim, cgTime,
                 out int oldFrame, out int frame, out float backlerp);
 
-            // Apply lerped blend-shape weights to every SkinnedMeshRenderer in the viewmodel.
-            // Blend shape (i) represents absolute MD3 frame (i+1).
+            // --- Tag-based animation (tag-only MDC hands model) ---
+            if (_handsTagAnim != null)
+            {
+                int numF   = _handsTagAnim.NumFrames;
+                int fCur   = Mathf.Clamp(frame,    0, numF - 1);
+                int fOld   = Mathf.Clamp(oldFrame, 0, numF - 1);
+                float lerp = 1f - backlerp; // fraction toward current frame
+
+                int numTags = _handsTagAnim.TagTransforms?.Length ?? 0;
+                for (int ti = 0; ti < numTags; ti++)
+                {
+                    var tagXform = _handsTagAnim.TagTransforms[ti];
+                    if (tagXform == null) continue;
+                    tagXform.localPosition = Vector3.Lerp(
+                        _handsTagAnim.TagPositions[fOld][ti],
+                        _handsTagAnim.TagPositions[fCur][ti], lerp);
+                    tagXform.localRotation = Quaternion.Slerp(
+                        _handsTagAnim.TagRotations[fOld][ti],
+                        _handsTagAnim.TagRotations[fCur][ti], lerp);
+                }
+                return;
+            }
+
+            // --- Blend-shape animation (mesh models) ---
+            // Blend shape i represents absolute MD3 frame (i+1); frame 0 = base mesh.
             foreach (var smr in _viewmodelRoot.GetComponentsInChildren<SkinnedMeshRenderer>())
             {
                 int shapeCount = smr.sharedMesh != null ? smr.sharedMesh.blendShapeCount : 0;

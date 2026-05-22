@@ -64,7 +64,8 @@ public class Md3Data
     public string       Name;
     public int          NumFrames;
     public Md3Frame[]   Frames;
-    public Md3Tag[]     Tags;
+    public Md3Tag[]     Tags;         // frame 0 tags (static attachment points)
+    public Md3Tag[][]   FrameTags;    // [frame][tagIndex] — set by MDC loader for animated models
     public Md3Surface[] Surfaces;
 
     // -----------------------------------------------------------------------

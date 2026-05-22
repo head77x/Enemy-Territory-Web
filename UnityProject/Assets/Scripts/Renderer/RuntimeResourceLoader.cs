@@ -17,6 +17,20 @@ using System.Text;
 using UnityEngine;
 using ET.Core;
 
+/// <summary>
+/// Stores per-frame MDC tag transforms for tag-only animated viewmodels (numSurfs=0).
+/// DriveViewmodelAnimation reads this to reposition attached sub-models each frame.
+/// Ported from CG_PositionRotatedEntityOnTag (cg_weapons.c).
+/// </summary>
+public class MdcTagAnimation : MonoBehaviour
+{
+    public int           NumFrames;
+    public string[]      TagNames;
+    public Transform[]   TagTransforms;   // live child transforms (one per tag)
+    public Vector3[][]   TagPositions;    // [frame][tagIndex] local position
+    public Quaternion[][] TagRotations;   // [frame][tagIndex] local rotation
+}
+
 public static class RuntimeResourceLoader
 {
     // Shader name to use for opaque surfaces in URP / Built-in RP
@@ -670,9 +684,11 @@ public static class RuntimeResourceLoader
             smr.sharedMaterial = GetOrBuildGenericMaterial(shaderName);
         }
 
-        // Tags → empty child transforms
-        foreach (var tag in md3.Tags)
+        // Tags → empty child transforms (frame 0 pose)
+        var tagTransforms = new Transform[md3.Tags.Length];
+        for (int ti = 0; ti < md3.Tags.Length; ti++)
         {
+            var tag = md3.Tags[ti];
             var tagGo = new GameObject(tag.Name);
             tagGo.transform.SetParent(root.transform, false);
             tagGo.transform.localPosition = tag.Origin;
@@ -682,6 +698,37 @@ public static class RuntimeResourceLoader
             rm.SetColumn(2, new Vector4(tag.AxisZ.x, tag.AxisZ.y, tag.AxisZ.z, 0f));
             rm.SetColumn(3, new Vector4(0f, 0f, 0f, 1f));
             tagGo.transform.localRotation = rm.rotation;
+            tagTransforms[ti] = tagGo.transform;
+        }
+
+        // Per-frame tag animation for tag-only MDC models (e.g. v_thompson_hand.mdc, numSurfs=0).
+        // Attach MdcTagAnimation so DriveViewmodelAnimation can interpolate tag transforms.
+        if (md3.FrameTags != null && md3.FrameTags.Length > 1 && md3.Tags.Length > 0)
+        {
+            var tagAnim = root.AddComponent<MdcTagAnimation>();
+            tagAnim.NumFrames     = md3.FrameTags.Length;
+            tagAnim.TagNames      = System.Array.ConvertAll(md3.Tags, t => t.Name);
+            tagAnim.TagTransforms = tagTransforms;
+            tagAnim.TagPositions  = new Vector3[md3.FrameTags.Length][];
+            tagAnim.TagRotations  = new Quaternion[md3.FrameTags.Length][];
+
+            for (int f = 0; f < md3.FrameTags.Length; f++)
+            {
+                tagAnim.TagPositions[f] = new Vector3[md3.Tags.Length];
+                tagAnim.TagRotations[f] = new Quaternion[md3.Tags.Length];
+                for (int ti = 0; ti < md3.Tags.Length; ti++)
+                {
+                    var ft = md3.FrameTags[f][ti];
+                    tagAnim.TagPositions[f][ti] = ft.Origin;
+                    var rm = new Matrix4x4();
+                    rm.SetColumn(0, new Vector4(ft.AxisX.x, ft.AxisX.y, ft.AxisX.z, 0f));
+                    rm.SetColumn(1, new Vector4(ft.AxisY.x, ft.AxisY.y, ft.AxisY.z, 0f));
+                    rm.SetColumn(2, new Vector4(ft.AxisZ.x, ft.AxisZ.y, ft.AxisZ.z, 0f));
+                    rm.SetColumn(3, new Vector4(0f, 0f, 0f, 1f));
+                    tagAnim.TagRotations[f][ti] = rm.rotation;
+                }
+            }
+            Debug.Log($"[BuildMd3Object] '{name}': MdcTagAnimation frames={tagAnim.NumFrames} tags=[{string.Join(",", tagAnim.TagNames)}]");
         }
 
         return root;

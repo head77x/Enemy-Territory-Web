@@ -383,45 +383,42 @@ public static class MdcLoader
 
         // ----------------------------------------------------------------
         // Tags — numFrames * numTags * mdcTag_t (12 bytes each)
+        // Layout: frame-major — all tags for frame 0, then frame 1, etc.
         // short xyz[3], short angles[3]
-        // We only read frame 0 tags for static attachment points.
+        // Read ALL frames so per-frame tag animation works for tag-only models.
         // ----------------------------------------------------------------
         ms.Position = ofsTags;
-        for (int i = 0; i < numTags; i++)
+        var frameTags = new Md3Tag[numFrames][];
+        for (int f = 0; f < numFrames; f++)
         {
-            // Frame 0, tag i
-            short tx = r.ReadInt16();
-            short ty = r.ReadInt16();
-            short tz = r.ReadInt16();
-            short aP = r.ReadInt16(); // pitch
-            short aR = r.ReadInt16(); // roll
-            short aY = r.ReadInt16(); // yaw
-
-            // Position: ET units, divide by 64 then convert to Unity coords
-            var etPos = new Vector3(tx / 64f, ty / 64f, tz / 64f);
-
-            // Angles: ET Euler in 32700 units/360 degrees
-            // ET convention: pitch=angles[0], roll=angles[1], yaw=angles[2]
-            float pitch = aP * (360f / 32700f);
-            float roll  = aR * (360f / 32700f);
-            float yaw   = aY * (360f / 32700f);
-
-            // Build rotation quaternion from ET Euler angles (YXZ order in ET = yaw-pitch-roll)
-            // ET: yaw rotates around Z (up), pitch around Y (left), roll around X (forward)
-            // Map to Unity: ET Z(up)→Unity Y, ET Y(left)→Unity -X, ET X(forward)→Unity Z
-            var etRot = Quaternion.Euler(pitch, yaw, roll);
-
-            md3.Tags[i] = new Md3Tag
+            frameTags[f] = new Md3Tag[numTags];
+            for (int i = 0; i < numTags; i++)
             {
-                Name   = tagNames[i],
-                Origin = Md3Data.EtToUnity(etPos),
-                // Populate axis vectors from the rotation quaternion (Unity space)
-                AxisX  = etRot * Vector3.right,
-                AxisY  = etRot * Vector3.up,
-                AxisZ  = etRot * Vector3.forward,
-            };
+                short tx = r.ReadInt16();
+                short ty = r.ReadInt16();
+                short tz = r.ReadInt16();
+                short aP = r.ReadInt16(); // pitch
+                short aR = r.ReadInt16(); // roll
+                short aY = r.ReadInt16(); // yaw
+
+                var etPos = new Vector3(tx / 64f, ty / 64f, tz / 64f);
+                float pitch = aP * (360f / 32700f);
+                float roll  = aR * (360f / 32700f);
+                float yaw   = aY * (360f / 32700f);
+                var etRot = Quaternion.Euler(pitch, yaw, roll);
+
+                frameTags[f][i] = new Md3Tag
+                {
+                    Name   = tagNames[i],
+                    Origin = Md3Data.EtToUnity(etPos),
+                    AxisX  = etRot * Vector3.right,
+                    AxisY  = etRot * Vector3.up,
+                    AxisZ  = etRot * Vector3.forward,
+                };
+            }
         }
-        // Skip remaining frame tags (frames 1..numFrames-1) — we use frame 0 only
+        if (numFrames > 0) md3.Tags = frameTags[0];
+        md3.FrameTags = frameTags;
 
         // ----------------------------------------------------------------
         // Surfaces

@@ -219,7 +219,12 @@ namespace ET.Client
 
         private static string NextToken(Queue<string> tokens)
         {
-            return tokens.Count > 0 ? tokens.Dequeue() : null;
+            if (tokens.Count == 0) return null;
+            // ET's PC tokenizer strips surrounding quotes automatically; mirror that here.
+            string t = tokens.Dequeue();
+            if (t.Length >= 2 && t[0] == '"' && t[t.Length - 1] == '"')
+                return t.Substring(1, t.Length - 2);
+            return t;
         }
     }
 

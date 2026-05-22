@@ -80,7 +80,21 @@ public static class RuntimeResourceLoader
     // =========================================================================
     public static GameObject LoadMd3(string virtualPath, Transform parent = null)
     {
-        byte[] data = FileSystem.FS_ReadFile(virtualPath);
+        // Mirror ET RE_RegisterModel: try .mdc first (changes last char '3' → 'c')
+        string mdcPath = virtualPath.EndsWith(".md3", StringComparison.OrdinalIgnoreCase)
+            ? virtualPath.Substring(0, virtualPath.Length - 1) + "c"
+            : null;
+
+        byte[] data = null;
+        bool isMdc = false;
+        if (mdcPath != null)
+        {
+            data = FileSystem.FS_ReadFile(mdcPath);
+            isMdc = (data != null);
+        }
+        if (data == null)
+            data = FileSystem.FS_ReadFile(virtualPath);
+
         if (data == null)
         {
             // Try v_ prefix for viewmodel variant (e.g. models/weapons2/mp40/v_mp40.md3)
@@ -89,19 +103,31 @@ public static class RuntimeResourceLoader
             string viewPath = string.IsNullOrEmpty(dir)
                 ? "v_" + fileName
                 : dir + "/v_" + fileName;
-            data = FileSystem.FS_ReadFile(viewPath);
-            if (data != null)
+
+            // Try v_ MDC variant first, then v_ MD3
+            string viewMdcPath = viewPath.EndsWith(".md3", StringComparison.OrdinalIgnoreCase)
+                ? viewPath.Substring(0, viewPath.Length - 1) + "c"
+                : null;
+            if (viewMdcPath != null)
             {
-                virtualPath = viewPath;
+                data = FileSystem.FS_ReadFile(viewMdcPath);
+                if (data != null) { virtualPath = viewPath; mdcPath = viewMdcPath; isMdc = true; }
             }
-            else
+            if (data == null)
+            {
+                data = FileSystem.FS_ReadFile(viewPath);
+                if (data != null) { virtualPath = viewPath; isMdc = false; }
+            }
+
+            if (data == null)
             {
                 // Log what IS available in the same directory to help diagnose path issues
                 var avail = FileSystem.FS_GetFileList(dir, ".md3");
-                Debug.LogWarning($"[RuntimeResourceLoader] MD3 not found: {virtualPath}" +
-                    (avail.Length > 0
-                        ? $". Available in '{dir}': {string.Join(", ", avail)}"
-                        : $". No .md3 files found in '{dir}'"));
+                var availMdc = FileSystem.FS_GetFileList(dir, ".mdc");
+                Debug.LogWarning($"[RuntimeResourceLoader] MD3/MDC not found: {virtualPath}" +
+                    (avail.Length > 0 || availMdc.Length > 0
+                        ? $". Available in '{dir}': md3=[{string.Join(", ", avail)}] mdc=[{string.Join(", ", availMdc)}]"
+                        : $". No .md3/.mdc files found in '{dir}'"));
                 // Also log top-level weapons dirs
                 var weapDirs = FileSystem.FS_GetFileList("models/weapons2", ".md3");
                 if (weapDirs.Length > 0)
@@ -111,11 +137,23 @@ public static class RuntimeResourceLoader
         }
 
         Md3Data md3;
-        try   { md3 = Md3Data.Load(data); }
-        catch (Exception ex)
+        if (isMdc)
         {
-            Debug.LogError($"[RuntimeResourceLoader] MD3 parse error '{virtualPath}': {ex.Message}");
-            return null;
+            try { md3 = MdcLoader.Load(data); }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[RuntimeResourceLoader] MDC parse error '{mdcPath}': {ex.Message}");
+                return null;
+            }
+        }
+        else
+        {
+            try { md3 = Md3Data.Load(data); }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[RuntimeResourceLoader] MD3 parse error '{virtualPath}': {ex.Message}");
+                return null;
+            }
         }
 
         return BuildMd3Object(md3, Path.GetFileNameWithoutExtension(virtualPath), parent);

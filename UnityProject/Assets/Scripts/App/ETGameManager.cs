@@ -798,7 +798,7 @@ namespace ET.App
         // Called whenever the local player fires.  Sets _kickAVel to a
         // weapon-specific impulse; CG_KickAngles spring-damps it each frame.
         // ----------------------------------------------------------------
-        private void OnWeaponFired(WeaponSystem.FireInfo fire)
+        private void OnWeaponFired(ET.Game.FireInfo fire)
         {
             if (fire.ClientNum != LocalClientNum) return;
 

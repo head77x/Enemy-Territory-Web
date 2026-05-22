@@ -542,11 +542,19 @@ namespace ET.App
 
             SetLayerRecursive(handsGo, ViewmodelLayer);
 
-            // Viewmodel never casts or receives world shadows
+            // Viewmodel never casts or receives world shadows.
+            // Expand each mesh's local bounds to a very large box so Unity frustum
+            // culling never hides the weapon mid-animation (the reload anim moves
+            // tag_weapon far off-center; small bounds would make the renderer pop invisible).
             foreach (var r in _viewmodelRoot.GetComponentsInChildren<Renderer>())
             {
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 r.receiveShadows    = false;
+            }
+            foreach (var mf in _viewmodelRoot.GetComponentsInChildren<MeshFilter>())
+            {
+                if (mf.mesh != null)
+                    mf.mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 2000f);
             }
 
             // --- Load animation data (CG_ParseWeaponConfig equivalent) ---

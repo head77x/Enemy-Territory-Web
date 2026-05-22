@@ -678,10 +678,25 @@ public static class RuntimeResourceLoader
 
             string shaderName = (surf.ShaderNames != null && surf.ShaderNames.Length > 0)
                 ? surf.ShaderNames[0] : surf.Name;
-            // SkinnedMeshRenderer is required to drive blend-shape animation at runtime.
-            var smr = child.AddComponent<SkinnedMeshRenderer>();
-            smr.sharedMesh     = mesh;
-            smr.sharedMaterial = GetOrBuildGenericMaterial(shaderName);
+            var mat = GetOrBuildGenericMaterial(shaderName);
+
+            if (mesh.blendShapeCount > 0)
+            {
+                // SkinnedMeshRenderer required for blend-shape morph animation.
+                // updateWhenOffscreen = true prevents Unity from skipping bounds update
+                // when the mesh moves due to tag animation (would cause wrong culling).
+                var smr = child.AddComponent<SkinnedMeshRenderer>();
+                smr.sharedMesh            = mesh;
+                smr.sharedMaterial        = mat;
+                smr.updateWhenOffscreen   = true;
+            }
+            else
+            {
+                // Static mesh (1 frame, no blend shapes) — MeshFilter + MeshRenderer.
+                // Avoids SkinnedMeshRenderer culling bugs when bones/rootBone are absent.
+                child.AddComponent<MeshFilter>().sharedMesh = mesh;
+                child.AddComponent<MeshRenderer>().sharedMaterial = mat;
+            }
         }
 
         // Tags → empty child transforms (frame 0 pose)

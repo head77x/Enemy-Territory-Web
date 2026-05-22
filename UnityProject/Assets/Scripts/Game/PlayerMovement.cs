@@ -1465,8 +1465,11 @@ namespace ET.Game
         private static bool BG_AkimboFireSequence(int weapon, int clip1, int clip2) => false;
         private static int  BG_AkimboSidearm(int weapon)   => GameConst.WP_NONE;
 
-        // Stub — BG_FindItemForWeapon; full item table ported later
-        private static object BG_FindItemForWeapon(int weapon) => null;
+        // Returns non-null for any weapon that has a valid item entry.
+        // Full bg_itemlist port deferred; returning a sentinel is enough
+        // for PM_BeginWeaponReload's null-guard, which already has a range check above it.
+        private static object BG_FindItemForWeapon(int weapon) =>
+            (weapon > GameConst.WP_NONE && weapon < WP_NUM_WEAPONS) ? (object)true : null;
 
         // weapAlts — for this port every weapon has no alt; full table ported later
         private static int WeaponAlt(int weapon)            => GameConst.WP_NONE;

@@ -70,13 +70,11 @@ namespace ET.App
         private const int ViewmodelLayer = 30;
         private Camera    _viewmodelCam;
         private Transform _viewmodelRoot;
-        private int       _viewmodelWeapon = GameConst.WP_NONE;
-        private int       _viewmodelNumFrames    = 0;   // total MD3 frames including frame 0
-        private float     _viewmodelAnimTime     = 0f;  // elapsed seconds for current anim range
-        private int       _viewmodelLastWeapAnim = -1;  // last ps.WeapAnim value (for restart detection)
-        private float     _viewmodelRecoilTime   = -1f; // >=0 while recoil anim plays; -1=idle
-        private Vector3   _viewmodelBasePos;            // local position at rest
-        private Quaternion _viewmodelBaseRot;           // local rotation at rest
+        private int       _viewmodelWeapon     = GameConst.WP_NONE;
+        private int       _viewmodelNumFrames  = 0;    // total MD3 frames (blend shapes + 1)
+        // CG_WeaponAnimation pipeline state (CG_RunWeapLerpFrame equivalent)
+        private ET.Client.WeaponAnimData  _weapAnimData;   // parsed from weapons/*.weap
+        private ET.Client.WeapLerpFrame   _weapLerpFrame = new ET.Client.WeapLerpFrame();
 
         // ----------------------------------------------------------------
         // MonoBehaviour lifecycle
@@ -478,12 +476,24 @@ namespace ET.App
             // Capture total frame count from first SkinnedMeshRenderer found (blend shapes + 1 for frame 0)
             var firstSmr = go.GetComponentInChildren<SkinnedMeshRenderer>();
             _viewmodelNumFrames = firstSmr != null ? firstSmr.sharedMesh.blendShapeCount + 1 : 0;
-            _viewmodelAnimTime  = 0f;
-            _viewmodelLastWeapAnim = -1;
-            _viewmodelRecoilTime   = -1f;
-            _viewmodelBasePos = go.transform.localPosition;
-            _viewmodelBaseRot = go.transform.localRotation;
-            Debug.Log($"[ETGameManager] Viewmodel frames loaded: {_viewmodelNumFrames} total (weapon={weapon})");
+
+            // Load weapon animation data from weapons/*.weap (CG_ParseWeaponConfig equivalent).
+            // Try the real weapon first; on fallback try the akimbo_colt weap.
+            _weapAnimData = null;
+            string weapPath = ET.Client.WeaponAnimSystem.WeapFilePath(weapon);
+            if (weapPath != null)
+                _weapAnimData = ET.Client.WeaponAnimData.Load(weapPath);
+            if (_weapAnimData == null && usingFallback)
+            {
+                var ps2 = ServerGameLogic.Clients[LocalClientNum]?.PS;
+                bool axis2 = ps2 != null && ps2.TeamNum == ET.Game.DamageSystem.TEAM_AXIS;
+                string fbWeap = axis2 ? "weapons/akimbo_luger.weap" : "weapons/akimbo_colt.weap";
+                _weapAnimData = ET.Client.WeaponAnimData.Load(fbWeap);
+            }
+            // Reset lerpFrame so CG_RunWeapLerpFrame re-initialises on next call
+            _weapLerpFrame = new ET.Client.WeapLerpFrame();
+
+            Debug.Log($"[ETGameManager] Viewmodel frames={_viewmodelNumFrames} weapon={weapon} animData={(_weapAnimData != null ? "loaded" : "missing")}");
 
             // Also load the separate hand model for akimbo fallback weapons
             if (usingFallback && handPath != null)
@@ -678,130 +688,47 @@ namespace ET.App
             }
         }
 
-        // -------------------------------------------------------------------
-        // Weapon animation frame ranges — ported from ET bg_misc.c bg_weaponlist[].
-        // Each entry is (animState, startFrame, numFrames, fps, looping).
-        // These are the frame ranges baked into each weapon's viewmodel MD3.
-        // -------------------------------------------------------------------
-        private struct WeapAnimRange
-        {
-            public int   Anim;
-            public int   Start;
-            public int   Count;
-            public float Fps;
-            public bool  Loop;
-        }
-
-        // Frame ranges for akimbo_colt / akimbo_luger viewmodel MD3s.
-        // Source: ET bg_misc.c bg_weaponlist entries for WP_AKIMBO_COLT / WP_AKIMBO_LUGER.
-        private static readonly WeapAnimRange[] s_AkimboAnimRanges = new WeapAnimRange[]
-        {
-            new WeapAnimRange { Anim = GameConst.WEAP_IDLE1,           Start =   0, Count = 40, Fps = 20f, Loop = true  },
-            new WeapAnimRange { Anim = GameConst.WEAP_IDLE2,           Start =  40, Count =  4, Fps = 20f, Loop = true  },
-            new WeapAnimRange { Anim = GameConst.WEAP_ATTACK1,         Start =  44, Count = 10, Fps = 20f, Loop = false },
-            new WeapAnimRange { Anim = GameConst.WEAP_ATTACK2,         Start =  54, Count = 10, Fps = 20f, Loop = false },
-            new WeapAnimRange { Anim = GameConst.WEAP_ATTACK_LASTSHOT, Start =  64, Count = 10, Fps = 20f, Loop = false },
-            new WeapAnimRange { Anim = GameConst.WEAP_RAISE,           Start =  74, Count = 15, Fps = 20f, Loop = false },
-            new WeapAnimRange { Anim = GameConst.WEAP_RELOAD1,         Start =  89, Count = 60, Fps = 20f, Loop = false },
-        };
-
-        // Returns the animation range for a given weapon and WEAP_* animState.
-        // Falls back to IDLE1 if not found.
-        private static WeapAnimRange GetWeapAnimRange(int weapon, int animState)
-        {
-            // All currently available models are akimbo variants — use same table.
-            var table = s_AkimboAnimRanges;
-            foreach (var r in table)
-                if (r.Anim == animState) return r;
-            return table[0]; // IDLE1 fallback
-        }
-
-        // Drives viewmodel animation by reading ps.WeapAnim (set by PlayerMovement).
-        // When the MD3 has multiple frames, blend-shape morphing is used (one shape per frame).
-        // When the MD3 has only 1 frame (no shapes — common with fallback akimbo models),
-        // a transform-based recoil kick is used instead so firing is still visible.
+        // CG_WeaponAnimation equivalent — drives viewmodel blend-shape animation.
+        // Reads ps.WeapAnim (set by pmove / PM_Weapon), passes it through
+        // CG_RunWeapLerpFrame to compute oldFrame/frame/backlerp, then applies
+        // those to each SkinnedMeshRenderer's blend-shape weights.
+        //
+        // Frame encoding (matches BuildMd3Object / Md3Importer):
+        //   blend shape i  ↔  absolute MD3 frame (i + 1)
+        //   frame 0 = base mesh (no blend shape)
+        //
+        // If _weapAnimData is null (weap file not found) or the model has 1 frame,
+        // the weight loop simply never fires — same as ET with a missing model.
         private void DriveViewmodelAnimation()
         {
-            if (_viewmodelRoot == null) return;
+            if (_viewmodelRoot == null || _viewmodelNumFrames <= 1) return;
 
             var gc = ServerGameLogic.Clients[LocalClientNum];
-            int rawWeapAnim = gc?.PS?.WeapAnim ?? GameConst.WEAP_IDLE1;
-            int animState   = rawWeapAnim & ~GameConst.ANIM_TOGGLEBIT;
+            int weapAnim = gc?.PS?.WeapAnim ?? GameConst.WEAP_IDLE1;
 
-            if (rawWeapAnim != _viewmodelLastWeapAnim)
-            {
-                Debug.Log($"[Viewmodel] WeapAnim changed: {_viewmodelLastWeapAnim} → {rawWeapAnim} (animState={animState} frames={_viewmodelNumFrames})");
-                _viewmodelAnimTime     = 0f;
-                _viewmodelLastWeapAnim = rawWeapAnim;
+            // Use level time as the cg.time equivalent (milliseconds).
+            int cgTime = ServerGameLogic.Level.Time;
 
-                // Trigger recoil kick whenever a fire anim starts.
-                if (animState == GameConst.WEAP_ATTACK1 || animState == GameConst.WEAP_ATTACK2)
-                    _viewmodelRecoilTime = 0f;
-            }
+            // Without animation data we cannot advance frames — leave model at frame 0.
+            if (_weapAnimData == null) return;
 
-            // ---- Fallback: transform recoil for single-frame models ----
-            if (_viewmodelNumFrames <= 1)
-            {
-                if (_viewmodelRecoilTime >= 0f)
-                {
-                    const float recoilDur = 0.08f;  // seconds to peak
-                    const float returnDur = 0.12f;  // seconds back to rest
-                    const float totalDur  = recoilDur + returnDur;
+            ET.Client.WeaponAnimSystem.WeaponAnimation(
+                _weapAnimData, _weapLerpFrame, weapAnim, cgTime,
+                out int oldFrame, out int frame, out float backlerp);
 
-                    _viewmodelRecoilTime += Time.deltaTime;
-
-                    float t;
-                    if (_viewmodelRecoilTime < recoilDur)
-                    {
-                        // Going to peak — move back and up in local space
-                        t = _viewmodelRecoilTime / recoilDur;
-                    }
-                    else if (_viewmodelRecoilTime < totalDur)
-                    {
-                        // Returning to rest
-                        t = 1f - (_viewmodelRecoilTime - recoilDur) / returnDur;
-                    }
-                    else
-                    {
-                        t = 0f;
-                        _viewmodelRecoilTime = -1f;
-                    }
-
-                    // Ease in-out
-                    t = t * t * (3f - 2f * t);
-
-                    // Kick: backward (local -Z) and slightly up (local +Y)
-                    Vector3 kick = new Vector3(0f, 0.8f, -2.0f) * t;
-                    _viewmodelRoot.localPosition = _viewmodelBasePos + _viewmodelRoot.localRotation * kick;
-                    _viewmodelRoot.localRotation = _viewmodelBaseRot * Quaternion.Euler(-6f * t, 0f, 0f);
-                }
-                else
-                {
-                    // Snap back to base when idle (avoid drift)
-                    _viewmodelRoot.localPosition = _viewmodelBasePos;
-                    _viewmodelRoot.localRotation = _viewmodelBaseRot;
-                }
-                return;
-            }
-
-            // ---- Blend-shape morph-target animation (multi-frame MD3) ----
-            var range = GetWeapAnimRange(_viewmodelWeapon, animState);
-
-            int rangeStart = Mathf.Min(range.Start, _viewmodelNumFrames - 1);
-            int rangeCount = Mathf.Min(range.Count, _viewmodelNumFrames - rangeStart);
-            if (rangeCount <= 0) rangeCount = 1;
-
-            _viewmodelAnimTime += Time.deltaTime * range.Fps;
-            int localFrame = range.Loop
-                ? (int)_viewmodelAnimTime % rangeCount
-                : Mathf.Min((int)_viewmodelAnimTime, rangeCount - 1);
-            int frameIndex = rangeStart + localFrame;
-
+            // Apply lerped blend-shape weights to every SkinnedMeshRenderer in the viewmodel.
+            // Blend shape (i) represents absolute MD3 frame (i+1).
             foreach (var smr in _viewmodelRoot.GetComponentsInChildren<SkinnedMeshRenderer>())
             {
                 int shapeCount = smr.sharedMesh != null ? smr.sharedMesh.blendShapeCount : 0;
                 for (int i = 0; i < shapeCount; i++)
-                    smr.SetBlendShapeWeight(i, (i + 1 == frameIndex) ? 100f : 0f);
+                {
+                    int absFrame = i + 1;
+                    float w = 0f;
+                    if (absFrame == frame)    w += (1f - backlerp) * 100f;
+                    if (absFrame == oldFrame) w += backlerp * 100f;
+                    smr.SetBlendShapeWeight(i, w);
+                }
             }
         }
 

@@ -337,6 +337,10 @@ public static class MdcLoader
         int ofsSurfaces   = r.ReadInt32();
         int ofsEnd        = r.ReadInt32();
 
+        Debug.Log($"[MdcLoader] '{name}': numFrames={numFrames} numTags={numTags} numSurfs={numSurfs} " +
+                  $"ofsFrames={ofsFrames} ofsTagNames={ofsTagNames} ofsTags={ofsTags} " +
+                  $"ofsSurfaces={ofsSurfaces} ofsEnd={ofsEnd} fileSize={data.Length}");
+
         var md3 = new Md3Data
         {
             Name      = name,
@@ -447,6 +451,7 @@ public static class MdcLoader
         int   numShaders         = r.ReadInt32();
         int   numVerts           = r.ReadInt32();
         int   numTriangles       = r.ReadInt32();
+        Debug.Log($"[MdcLoader] surf '{surfName}': numBaseFrames={numBaseFrames} numCompFrames={numCompFrames} numVerts={numVerts} numTris={numTriangles}");
         int   ofsTriangles       = r.ReadInt32();
         int   ofsShaders         = r.ReadInt32();
         int   ofsST              = r.ReadInt32();

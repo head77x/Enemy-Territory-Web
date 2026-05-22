@@ -91,9 +91,14 @@ public static class RuntimeResourceLoader
         {
             data = FileSystem.FS_ReadFile(mdcPath);
             isMdc = (data != null);
+            Debug.Log($"[LoadMd3] MDC probe '{mdcPath}': {(isMdc ? $"FOUND {data.Length} bytes" : "not found")}");
         }
         if (data == null)
+        {
             data = FileSystem.FS_ReadFile(virtualPath);
+            if (data != null)
+                Debug.Log($"[LoadMd3] MD3 fallback '{virtualPath}': FOUND {data.Length} bytes");
+        }
 
         if (data == null)
         {

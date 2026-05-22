@@ -1600,6 +1600,7 @@ namespace ET.Game
             }
 
             ps.Weaponstate = GameConst.WEAPON_RELOADING;
+            UnityEngine.Debug.Log($"[PM_BeginWeaponReload] weapon={weapon} clip={ps.AmmoClip[weapon]} reserve={ps.Ammo[weapon]} reloadTime={reloadTime}ms weapAnim={ps.WeapAnim}");
             AddEvent(EV_FILL_CLIP);
         }
 
@@ -1637,9 +1638,12 @@ namespace ET.Game
         // -----------------------------------------------------------------------
         private void PM_FinishWeaponReload()
         {
-            PM_ReloadClip(_pm.Ps.Weapon);
-            _pm.Ps.Weaponstate = GameConst.WEAPON_READY;
-            PM_StartWeaponAnim(PM_IdleAnimForWeapon(_pm.Ps.Weapon));
+            var ps = _pm.Ps;
+            int clipBefore = ps.AmmoClip[ps.Weapon];
+            PM_ReloadClip(ps.Weapon);
+            UnityEngine.Debug.Log($"[PM_FinishWeaponReload] weapon={ps.Weapon} clip: {clipBefore}→{ps.AmmoClip[ps.Weapon]} reserve={ps.Ammo[ps.Weapon]}");
+            ps.Weaponstate = GameConst.WEAPON_READY;
+            PM_StartWeaponAnim(PM_IdleAnimForWeapon(ps.Weapon));
         }
 
         // -----------------------------------------------------------------------

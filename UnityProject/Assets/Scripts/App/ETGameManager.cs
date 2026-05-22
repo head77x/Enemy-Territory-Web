@@ -766,6 +766,12 @@ namespace ET.App
             if (buttons != 0)                   buttons |= Button.Any;
             cmd.Buttons = buttons;
 
+            // WButtons (Wolf-specific: reload, prone, etc.)
+            int wbuttons = 0;
+            if (Input.GetKey(KeyCode.R))        wbuttons |= WButton.Reload;
+            if (Input.GetKey(KeyCode.Z))        wbuttons |= WButton.Prone;
+            cmd.WButtons = wbuttons;
+
             if (Input.GetMouseButton(0))
                 Debug.Log($"[DriveLocalPlayer] LMB pressed → buttons=0x{buttons:X} weapon={ps.Weapon} pmType={ps.PmType}");
 

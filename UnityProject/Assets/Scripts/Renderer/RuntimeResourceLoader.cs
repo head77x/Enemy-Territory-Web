@@ -603,14 +603,14 @@ public static class RuntimeResourceLoader
             }
             mesh.RecalculateBounds();
 
-            // Diagnostic: log first recalculated normal; should be roughly -Z for front-facing gun surfaces
+            // Diagnostic: log frames + first recalculated normal
             var recalcNormals = mesh.normals;
             if (recalcNormals != null && recalcNormals.Length > 0)
             {
                 var n0 = recalcNormals[0];
                 var p0 = surf.Positions.Length > 0 ? surf.Positions[0] : Vector3.zero;
-                Debug.Log($"[BuildMd3Object] surf='{surf.Name}' verts={recalcNormals.Length} " +
-                    $"normal[0]={n0:F3} pos[0]={p0:F1} bounds={mesh.bounds}");
+                Debug.Log($"[BuildMd3Object] '{name}' surf='{surf.Name}' frames={md3.NumFrames} " +
+                    $"blendShapes={mesh.blendShapeCount} verts={recalcNormals.Length} pos[0]={p0:F1}");
             }
 
             var child = new GameObject(surf.Name);

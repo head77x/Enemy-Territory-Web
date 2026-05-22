@@ -473,10 +473,6 @@ namespace ET.App
 
             SetLayerRecursive(go, ViewmodelLayer);
 
-            // Capture total frame count from first SkinnedMeshRenderer found (blend shapes + 1 for frame 0)
-            var firstSmr = go.GetComponentInChildren<SkinnedMeshRenderer>();
-            _viewmodelNumFrames = firstSmr != null ? firstSmr.sharedMesh.blendShapeCount + 1 : 0;
-
             // Load weapon animation data from weapons/*.weap (CG_ParseWeaponConfig equivalent).
             // Try the real weapon first; on fallback try the akimbo_colt weap.
             _weapAnimData = null;
@@ -492,8 +488,6 @@ namespace ET.App
             }
             // Reset lerpFrame so CG_RunWeapLerpFrame re-initialises on next call
             _weapLerpFrame = new ET.Client.WeapLerpFrame();
-
-            Debug.Log($"[ETGameManager] Viewmodel frames={_viewmodelNumFrames} weapon={weapon} animData={(_weapAnimData != null ? "loaded" : "missing")}");
 
             // Also load the separate hand model for akimbo fallback weapons
             if (usingFallback && handPath != null)
@@ -520,6 +514,15 @@ namespace ET.App
                 r.receiveShadows    = false;
             }
 
+            // Scan ALL SMRs now that every sub-model is attached, take the max blend shape count.
+            // ET animates all parts in lockstep: the sub-model with the most frames drives the range.
+            int maxBlendShapes = 0;
+            foreach (var smr in _viewmodelRoot.GetComponentsInChildren<SkinnedMeshRenderer>())
+                if (smr.sharedMesh != null)
+                    maxBlendShapes = Mathf.Max(maxBlendShapes, smr.sharedMesh.blendShapeCount);
+            _viewmodelNumFrames = maxBlendShapes + 1;
+
+            Debug.Log($"[ETGameManager] Viewmodel frames={_viewmodelNumFrames} weapon={weapon} animData={(_weapAnimData != null ? "loaded" : "missing")}");
             Debug.Log($"[ETGameManager] Viewmodel loaded: {wri.ModelPath}");
         }
 

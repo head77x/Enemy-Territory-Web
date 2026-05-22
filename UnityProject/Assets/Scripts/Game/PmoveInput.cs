@@ -71,6 +71,12 @@ namespace ET.Game
         public TraceFunc         Trace;
         public PointContentsFunc PointContents;
 
+        // BG_GetAnimScriptAnimation equivalent — returns the duration (ms) of a weapon
+        // animation so PM_StartWeaponAnim can set WeapAnimTimer to lock the animation
+        // against being overridden by idle.  Set to null if not available (timer stays 0).
+        // Signature: (animIndex) → durationMs; returns 0 for looping anims.
+        public Func<int, int> WeapAnimGetDurationMs;
+
         // --- character/anim (in) --- stub, filled by animation layer later
         // public BgCharacter Character;
     }

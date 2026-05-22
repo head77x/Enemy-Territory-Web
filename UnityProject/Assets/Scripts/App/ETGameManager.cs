@@ -393,7 +393,7 @@ namespace ET.App
             _viewmodelCam = vmGo.AddComponent<Camera>();
             _viewmodelCam.clearFlags    = CameraClearFlags.Depth;
             _viewmodelCam.cullingMask   = 1 << ViewmodelLayer;
-            _viewmodelCam.nearClipPlane = 0.5f;
+            _viewmodelCam.nearClipPlane = 0.01f;
             _viewmodelCam.farClipPlane  = 600f;
             _viewmodelCam.fieldOfView   = 60f;
             _viewmodelCam.depth         = cam.depth + 1;
@@ -549,6 +549,22 @@ namespace ET.App
             // Reset lerpFrame so CG_RunWeapLerpFrame re-initialises on next call
             _weapLerpFrame = new ET.Client.WeapLerpFrame();
 
+            // Wire WeapAnimGetDurationMs: BG_GetAnimScriptAnimation equivalent.
+            // Returns total duration (ms) of a one-shot weapon animation so PM_StartWeaponAnim
+            // can set WeapAnimTimer and prevent idle from overriding the attack animation.
+            var animDataRef = _weapAnimData;
+            _pmInput.WeapAnimGetDurationMs = (animIdx) =>
+            {
+                if (animDataRef == null) return 0;
+                int idx = animIdx & ~GameConst.ANIM_TOGGLEBIT;
+                var anims = animDataRef.Animations;
+                if (idx < 0 || idx >= anims.Length || anims[idx] == null) return 0;
+                var a = anims[idx];
+                // Looping animations (LoopFrames > 0) must NOT lock — return 0.
+                // One-shot animations lock for their full duration.
+                return a.LoopFrames > 0 ? 0 : a.NumFrames * a.FrameLerp;
+            };
+
             // Determine frame count. Tag-animated hands models use per-frame tag transforms
             // (v_thompson_hand.mdc has 66 frames, 0 surfaces). Mesh models use blend shapes.
             if (_handsTagAnim != null)
@@ -570,6 +586,24 @@ namespace ET.App
                       $"animData={(_weapAnimData != null ? "loaded" : "missing")} " +
                       $"tagAnim={(_handsTagAnim != null ? "yes" : "no")} " +
                       $"handsModel='{wri.HandsModelPath}' gunBody='{wri.ModelPath}'");
+
+            // Diagnostic: dump renderer state for every surface in the viewmodel hierarchy.
+            // This reveals whether w_handr is loaded, enabled, and where its mesh bounds are.
+            foreach (var r in _viewmodelRoot.GetComponentsInChildren<Renderer>(includeInactive: true))
+            {
+                Mesh m = null;
+                var mf = r.GetComponent<MeshFilter>();
+                if (mf != null) m = mf.sharedMesh;
+                var smr = r as SkinnedMeshRenderer;
+                if (smr != null) m = smr.sharedMesh;
+                Debug.Log($"[VMRenderer] '{r.gameObject.name}' enabled={r.enabled} " +
+                          $"isVisible={r.isVisible} " +
+                          $"bounds={r.bounds} " +
+                          $"verts={m?.vertexCount ?? 0} " +
+                          $"mat='{r.sharedMaterial?.name ?? "null"}' " +
+                          $"tex='{r.sharedMaterial?.mainTexture?.name ?? "null"}' " +
+                          $"layer={r.gameObject.layer}");
+            }
         }
 
         private static void SetLayerRecursive(GameObject root, int layer)

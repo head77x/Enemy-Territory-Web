@@ -275,6 +275,10 @@ namespace ET.Game
             if (_pm.Cmd.Weapon == GameConst.WP_NONE) return;
             _pm.Ps.WeapAnim =
                 ((_pm.Ps.WeapAnim & GameConst.ANIM_TOGGLEBIT) ^ GameConst.ANIM_TOGGLEBIT) | anim;
+            // BG_GetAnimScriptAnimation: lock the animation for its full duration so that
+            // PM_ContinueWeaponAnim(IDLE) cannot override it before the animation completes.
+            int dur = _pm.WeapAnimGetDurationMs?.Invoke(anim) ?? 0;
+            if (dur > 0) _pm.Pmext.WeapAnimTimer = dur;
         }
 
         private void PM_ContinueWeaponAnim(int anim)

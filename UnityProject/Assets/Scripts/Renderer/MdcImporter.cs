@@ -384,7 +384,7 @@ public static class MdcLoader
         // ----------------------------------------------------------------
         // Tags — numFrames * numTags * mdcTag_t (12 bytes each)
         // Layout: frame-major — all tags for frame 0, then frame 1, etc.
-        // short xyz[3], short angles[3]
+        // Format: short xyz[3] (pos*64), short angles[3] (PITCH=0, YAW=1, ROLL=2)
         // Read ALL frames so per-frame tag animation works for tag-only models.
         // ----------------------------------------------------------------
         ms.Position = ofsTags;
@@ -394,26 +394,40 @@ public static class MdcLoader
             frameTags[f] = new Md3Tag[numTags];
             for (int i = 0; i < numTags; i++)
             {
-                short tx = r.ReadInt16();
-                short ty = r.ReadInt16();
-                short tz = r.ReadInt16();
-                short aP = r.ReadInt16(); // pitch
-                short aR = r.ReadInt16(); // roll
-                short aY = r.ReadInt16(); // yaw
+                short tx     = r.ReadInt16();
+                short ty     = r.ReadInt16();
+                short tz     = r.ReadInt16();
+                short aPitch = r.ReadInt16(); // angles[0] = PITCH
+                short aYaw   = r.ReadInt16(); // angles[1] = YAW
+                short aRoll  = r.ReadInt16(); // angles[2] = ROLL
 
                 var etPos = new Vector3(tx / 64f, ty / 64f, tz / 64f);
-                float pitch = aP * (360f / 32700f);
-                float roll  = aR * (360f / 32700f);
-                float yaw   = aY * (360f / 32700f);
-                var etRot = Quaternion.Euler(pitch, yaw, roll);
+                // SHORT2ANGLE: ET short angles are 65536 units per 360 degrees
+                float pitch = aPitch * (360f / 65536f);
+                float yaw   = aYaw   * (360f / 65536f);
+                float roll  = aRoll  * (360f / 65536f);
 
+                // Port of ET AngleVectors (q_math.c): produces forward/right/up in ET space
+                float pR = pitch * Mathf.Deg2Rad;
+                float yR = yaw   * Mathf.Deg2Rad;
+                float rR = roll  * Mathf.Deg2Rad;
+                float sp = Mathf.Sin(pR), cp = Mathf.Cos(pR);
+                float sy = Mathf.Sin(yR), cy = Mathf.Cos(yR);
+                float sr = Mathf.Sin(rR), cr = Mathf.Cos(rR);
+
+                var etForward = new Vector3( cp*cy,               cp*sy,              -sp);
+                var etRight   = new Vector3(-sr*sp*cy + cr*sy,  -sr*sp*sy - cr*cy,  -sr*cp);
+                var etUp      = new Vector3( cr*sp*cy + sr*sy,   cr*sp*sy - sr*cy,   cr*cp);
+
+                // Convert to Unity space (EtToUnity: x=-et.y, y=et.z, z=et.x)
+                // AxisX=right, AxisY=up, AxisZ=forward matches BuildMd3Object column layout
                 frameTags[f][i] = new Md3Tag
                 {
                     Name   = tagNames[i],
                     Origin = Md3Data.EtToUnity(etPos),
-                    AxisX  = etRot * Vector3.right,
-                    AxisY  = etRot * Vector3.up,
-                    AxisZ  = etRot * Vector3.forward,
+                    AxisX  = Md3Data.EtToUnity(etRight),    // Unity X (right)
+                    AxisY  = Md3Data.EtToUnity(etUp),       // Unity Y (up)
+                    AxisZ  = Md3Data.EtToUnity(etForward),  // Unity Z (forward)
                 };
             }
         }

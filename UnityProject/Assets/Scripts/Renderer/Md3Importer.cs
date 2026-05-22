@@ -126,21 +126,23 @@ public class Md3Data
 
         // --- Tags (112 bytes each) ------------------------------------------
         // char name[64] + vec3_t origin + vec3_t axis[3]
+        // ET axis layout: axis[0]=forward, axis[1]=left(=-right), axis[2]=up
+        // Store as Unity right/up/forward so BuildMd3Object column layout is correct
         ms.Position = ofsTags;
         for (int i = 0; i < numTags; i++)
         {
             string tagName = ReadFixedString(r, Md3Const.MaxQPath);
             var origin = ReadEtVec3(r);
-            var axX    = ReadEtVec3(r);
-            var axY    = ReadEtVec3(r);
-            var axZ    = ReadEtVec3(r);
+            var axFwd  = ReadEtVec3(r); // EtToUnity(ET axis[0]=forward) = Unity forward
+            var axLeft = ReadEtVec3(r); // EtToUnity(ET axis[1]=left)    = Unity left (= -right)
+            var axUp   = ReadEtVec3(r); // EtToUnity(ET axis[2]=up)      = Unity up
             md3.Tags[i] = new Md3Tag
             {
                 Name    = tagName,
                 Origin  = origin,
-                AxisX   = axX,
-                AxisY   = axY,
-                AxisZ   = axZ,
+                AxisX   = -axLeft,  // Unity right = -Unity left
+                AxisY   = axUp,     // Unity up
+                AxisZ   = axFwd,    // Unity forward
             };
         }
 

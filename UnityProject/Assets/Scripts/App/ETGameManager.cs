@@ -506,11 +506,11 @@ namespace ET.App
             }
 
             // CG_CalculateWeaponPosition: hand.origin = cg.refdef.vieworg.
-            // The MDC tag data places tag_weapon at camera-local z≈-2.4 (behind the camera
-            // origin), so we push the whole model forward by 3 units along the camera's
-            // Z axis (equivalent to cg_gunX=3 in ET) to keep all hand vertices in front
-            // of the near clip plane and visible to the player.
-            handsGo.transform.localPosition = new Vector3(0f, 0f, 3f);
+            // tag_weapon sits at camera-local z≈-2.4 at idle, and goes back to z≈-3.3
+            // during the ATTACK1 animation frames. Push the whole model forward by 5 units
+            // (equivalent to cg_gunX=5) so that even the deepest attack frame (+5-3.3=+1.7)
+            // stays clearly in front of the camera's near clip plane.
+            handsGo.transform.localPosition = new Vector3(0f, 0f, 5f);
             handsGo.transform.localRotation = Quaternion.identity;
             handsGo.transform.localScale    = Vector3.one;
 

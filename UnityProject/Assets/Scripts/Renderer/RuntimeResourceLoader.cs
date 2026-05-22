@@ -80,9 +80,12 @@ public static class RuntimeResourceLoader
     // =========================================================================
     public static GameObject LoadMd3(string virtualPath, Transform parent = null)
     {
-        // Mirror ET RE_RegisterModel: try .mdc first (changes last char '3' → 'c')
+        // Mirror ET RE_RegisterModel: try .mdc first (changes last char '3' → 'c').
+        // If caller already supplied a .mdc path, use it directly as the MDC probe path.
         string mdcPath = virtualPath.EndsWith(".md3", StringComparison.OrdinalIgnoreCase)
             ? virtualPath.Substring(0, virtualPath.Length - 1) + "c"
+            : virtualPath.EndsWith(".mdc", StringComparison.OrdinalIgnoreCase)
+            ? virtualPath
             : null;
 
         byte[] data = null;

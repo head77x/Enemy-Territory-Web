@@ -77,6 +77,15 @@ namespace ET.App
         private ET.Client.WeapLerpFrame   _weapLerpFrame = new ET.Client.WeapLerpFrame();
         // Per-frame tag animation component on the hands model (null for blend-shape models)
         private MdcTagAnimation           _handsTagAnim;
+        // Root GameObject of the hands model (handsGo) — used for bob/kick rotation each frame
+        private GameObject                _handsGo;
+
+        // ----------------------------------------------------------------
+        // CG_CalculateWeaponPosition state (cg_weapons.c port)
+        // ----------------------------------------------------------------
+        // kickAngles/kickAVel: spring-damped viewmodel recoil (CG_KickAngles + CG_WeaponFireRecoil)
+        private readonly float[] _kickAngles = new float[3];  // [pitch, yaw, roll] degrees
+        private readonly float[] _kickAVel   = new float[3];  // angular velocity, deg/s
 
         // ----------------------------------------------------------------
         // MonoBehaviour lifecycle
@@ -226,6 +235,7 @@ namespace ET.App
             // Spawn bots
             BotMain.OnBotCmd  += OnBotCmd;
             BotMain.OnBotChat += OnBotChat;
+            WeaponSystem.OnFireWeapon += OnWeaponFired;
 
             for (int i = 0; i < BotCount; i++)
             {
@@ -416,6 +426,7 @@ namespace ET.App
 
             // Remove old mesh
             _handsTagAnim = null;
+            _handsGo      = null;
             if (_viewmodelRoot != null)
             {
                 for (int i = _viewmodelRoot.childCount - 1; i >= 0; i--)
@@ -513,6 +524,13 @@ namespace ET.App
             handsGo.transform.localPosition = new Vector3(0f, 0f, 5f);
             handsGo.transform.localRotation = Quaternion.identity;
             handsGo.transform.localScale    = Vector3.one;
+
+            // Store for per-frame bob/kick rotation updates in DriveViewmodelAnimation
+            _handsGo = handsGo;
+
+            // Reset kick state when switching weapons
+            System.Array.Clear(_kickAngles, 0, 3);
+            System.Array.Clear(_kickAVel,   0, 3);
 
             // Diagnostic: confirm tag_weapon was found on handsGo and gun body is attached
             var tagWeaponCheck = handsGo.transform.Find("tag_weapon");
@@ -775,6 +793,100 @@ namespace ET.App
             }
         }
 
+        // ----------------------------------------------------------------
+        // CG_WeaponFireRecoil port (cg_weapons.c)
+        // Called whenever the local player fires.  Sets _kickAVel to a
+        // weapon-specific impulse; CG_KickAngles spring-damps it each frame.
+        // ----------------------------------------------------------------
+        private void OnWeaponFired(WeaponSystem.FireInfo fire)
+        {
+            if (fire.ClientNum != LocalClientNum) return;
+
+            float pitchAdd = 0f, yawRandom = 0f;
+
+            switch (fire.Weapon)
+            {
+                case GameConst.WP_THOMPSON:
+                case GameConst.WP_MP40:
+                case GameConst.WP_STEN:
+                case GameConst.WP_FG42:
+                case GameConst.WP_MOBILE_MG42:
+                    pitchAdd  = (1f + UnityEngine.Random.Range(0, 3)) * 0.3f;
+                    yawRandom = 2f * 0.3f;
+                    break;
+                case GameConst.WP_GARAND:
+                case GameConst.WP_KAR98:
+                case GameConst.WP_CARBINE:
+                case GameConst.WP_K43:
+                    pitchAdd  = 2f;
+                    yawRandom = 1f;
+                    break;
+                default:
+                    return;
+            }
+
+            float recoilYaw   = (UnityEngine.Random.value * 2f - 1f) * yawRandom;
+            float recoilRoll  = -recoilYaw;
+            float recoilPitch = -pitchAdd;
+
+            // VectorScale(recoil, 30) from original
+            _kickAVel[0] = recoilPitch * 30f;
+            _kickAVel[1] = recoilYaw   * 30f;
+            _kickAVel[2] = recoilRoll  * 30f;
+        }
+
+        // ----------------------------------------------------------------
+        // CG_KickAngles port (cg_view.c)
+        // Spring-damps _kickAVel → _kickAngles each frame.
+        // ----------------------------------------------------------------
+        private void UpdateKickAngles(float dt)
+        {
+            const float centerSpeed  = 2400f;
+            const float maxKickAngle = 10f;
+            const int   STEP_MS      = 20;
+
+            int msec = Mathf.Max(1, Mathf.RoundToInt(dt * 1000f));
+            for (int t = msec; t > 0; t -= STEP_MS)
+            {
+                int   step = Mathf.Min(t, STEP_MS);
+                float ft   = step / 1000f;
+
+                for (int i = 0; i < 3; i++)
+                {
+                    if (_kickAVel[i] == 0f && _kickAngles[i] == 0f) continue;
+
+                    if (_kickAngles[i] != 0f)
+                    {
+                        float idealSpeed = -Mathf.Sign(_kickAngles[i]) * centerSpeed;
+                        _kickAVel[i] += idealSpeed * ft;
+                    }
+
+                    float kickChange = _kickAVel[i] * ft;
+                    // returning toward center: dampen
+                    if (_kickAngles[i] != 0f && ((_kickAngles[i] < 0f) != (kickChange < 0f)))
+                        kickChange *= 0.06f;
+
+                    if (_kickAngles[i] == 0f ||
+                        ((_kickAngles[i] + kickChange < 0f) == (_kickAngles[i] < 0f)))
+                    {
+                        _kickAngles[i] += kickChange;
+                        if (_kickAngles[i] == 0f)
+                            _kickAVel[i] = 0f;
+                        else if (Mathf.Abs(_kickAngles[i]) > maxKickAngle)
+                        {
+                            _kickAngles[i] = Mathf.Sign(_kickAngles[i]) * maxKickAngle;
+                            _kickAVel[i]   = 0f;
+                        }
+                    }
+                    else
+                    {
+                        _kickAngles[i] = 0f;
+                        _kickAVel[i]   = 0f;
+                    }
+                }
+            }
+        }
+
         // CG_WeaponAnimation equivalent — drives viewmodel animation.
         //
         // For tag-only MDC hands models (v_thompson_hand.mdc, numSurfs=0):
@@ -789,6 +901,47 @@ namespace ET.App
         private void DriveViewmodelAnimation()
         {
             if (_viewmodelRoot == null || _viewmodelNumFrames <= 1) return;
+
+            // ---- CG_KickAngles: advance spring-damped recoil each render frame ----
+            UpdateKickAngles(Time.deltaTime);
+
+            // ---- CG_CalculateWeaponPosition: apply bob + idle drift + kickAngles ----
+            // Mirrors the angles[] modifications in cg_weapons.c CG_CalculateWeaponPosition.
+            // handsGo is parented to the viewmodel camera so localRotation IS camera-local space.
+            if (_handsGo != null)
+            {
+                var ps = ServerGameLogic.Clients[LocalClientNum]?.PS;
+
+                // Bobbing (from ps.BobCycle — set by Pmove when walking)
+                float xyspeed    = 0f;
+                float bobfracsin = 0f;
+                int   bobcycle   = 0;
+                if (ps != null)
+                {
+                    xyspeed    = Mathf.Sqrt(ps.Velocity0 * ps.Velocity0 + ps.Velocity1 * ps.Velocity1);
+                    bobcycle   = (ps.BobCycle & 128) >> 7;          // 0 or 1 (odd leg toggle)
+                    bobfracsin = Mathf.Abs(Mathf.Sin((ps.BobCycle & 127) / 127f * Mathf.PI));
+                }
+
+                float scale = ((bobcycle & 1) != 0) ? -xyspeed : xyspeed;
+
+                float pitchOff = xyspeed    * bobfracsin * 0.005f;
+                float yawOff   = scale      * bobfracsin * 0.01f;
+                float rollOff  = scale      * bobfracsin * 0.005f;
+
+                // Idle drift: sin(time * 0.001) in original — time is ms, so 1 Hz in seconds
+                float fracsin = Mathf.Sin(Time.realtimeSinceStartup * 1f);
+                pitchOff += 80f * fracsin * 0.01f;   // ±0.8 deg
+                yawOff   += 80f * fracsin * 0.01f;
+                rollOff  += 80f * fracsin * 0.01f;
+
+                // KickAngles — VectorMA(angles, -1.0, kickAngles, angles)
+                pitchOff -= _kickAngles[0];
+                yawOff   -= _kickAngles[1];
+                rollOff  -= _kickAngles[2];
+
+                _handsGo.transform.localRotation = Quaternion.Euler(pitchOff, yawOff, rollOff);
+            }
 
             var gc = ServerGameLogic.Clients[LocalClientNum];
             int weapAnim = gc?.PS?.WeapAnim ?? GameConst.WEAP_IDLE1;
@@ -886,6 +1039,7 @@ namespace ET.App
 
             BotMain.OnBotCmd  -= OnBotCmd;
             BotMain.OnBotChat -= OnBotChat;
+            WeaponSystem.OnFireWeapon -= OnWeaponFired;
 
             if (StartServer) ServerMain.SV_Shutdown("Game ending");
             if (StartClient) ClientMain.CL_Shutdown();

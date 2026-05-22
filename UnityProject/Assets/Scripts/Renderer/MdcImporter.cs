@@ -417,7 +417,9 @@ public static class MdcLoader
 
                 var etForward = new Vector3( cp*cy,               cp*sy,              -sp);
                 var etRight   = new Vector3(-sr*sp*cy + cr*sy,  -sr*sp*sy - cr*cy,  -sr*cp);
-                var etUp      = new Vector3( cr*sp*cy + sr*sy,   cr*sp*sy - sr*cy,   cr*cp);
+                // q_math.c up[0] = cr*sp*cy + (-1)*(-sr)*(-sy) = cr*sp*cy - sr*sy
+                // q_math.c up[1] = cr*sp*sy + (-1)*(-sr)*(cy)  = cr*sp*sy + sr*cy
+                var etUp      = new Vector3( cr*sp*cy - sr*sy,   cr*sp*sy + sr*cy,   cr*cp);
 
                 // Convert to Unity space (EtToUnity: x=-et.y, y=et.z, z=et.x)
                 // AxisX=right, AxisY=up, AxisZ=forward matches BuildMd3Object column layout

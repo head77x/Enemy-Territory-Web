@@ -767,6 +767,14 @@ namespace ET.Server
             ps.TeamNum = savedTeam;
             ps.ClientNum = clientNum;
             ps.Weapon  = DefaultWeaponForClass(savedClass, savedTeam);
+            ps.Weaponstate = GameConst.WEAPON_READY;
+
+            // Give starting ammo (full clip + reserves so pmove weapon state machine can fire)
+            if (ps.Weapon != GameConst.WP_NONE && ps.Weapon < ps.AmmoClip.Length)
+            {
+                ps.AmmoClip[ps.Weapon] = 30;
+                ps.Ammo[ps.Weapon]     = 90;
+            }
 
             // Position
             ps.Origin0 = origin.x;

@@ -201,7 +201,7 @@ namespace ET.App
                 ServerInit.SV_SpawnServer(MapName);
 
                 // Subscribe server-frame and client-think events
-                ServerMain.OnGameRunFrame    += ServerGameLogic.G_RunFrame;
+                // OnGameRunFrame internally calls G_RunFrame, so only subscribe once.
                 ServerMain.OnGameRunFrame    += OnGameRunFrame;
                 SV_Client.OnClientEnterWorld += OnClientEnterWorld;
                 SV_Client.OnClientThink      += OnClientThink;
@@ -716,19 +716,18 @@ namespace ET.App
         // To display frame F: set blend shape (F-1) = 100, all others = 0.
         private void DriveViewmodelAnimation()
         {
-            if (_viewmodelRoot == null || _viewmodelNumFrames <= 1) return;
-
             var gc = ServerGameLogic.Clients[LocalClientNum];
             int rawWeapAnim = gc?.PS?.WeapAnim ?? GameConst.WEAP_IDLE1;
             int animState   = rawWeapAnim & ~GameConst.ANIM_TOGGLEBIT;
 
-            // Restart timer whenever the animation state changes (toggle bit flip = new anim).
             if (rawWeapAnim != _viewmodelLastWeapAnim)
             {
-                Debug.Log($"[Viewmodel] WeapAnim changed: {_viewmodelLastWeapAnim} → {rawWeapAnim} (animState={animState})");
+                Debug.Log($"[Viewmodel] WeapAnim changed: {_viewmodelLastWeapAnim} → {rawWeapAnim} (animState={animState} frames={_viewmodelNumFrames})");
                 _viewmodelAnimTime     = 0f;
                 _viewmodelLastWeapAnim = rawWeapAnim;
             }
+
+            if (_viewmodelRoot == null || _viewmodelNumFrames <= 1) return;
 
             var range = GetWeapAnimRange(_viewmodelWeapon, animState);
 
@@ -762,7 +761,6 @@ namespace ET.App
                 Destroy(_viewmodelCam.gameObject);
 
             ServerInit.OnSpawnServer -= OnMapSpawn;
-            ServerMain.OnGameRunFrame       -= ServerGameLogic.G_RunFrame;
             ServerMain.OnGameRunFrame       -= OnGameRunFrame;
             SV_Client.OnClientEnterWorld    -= OnClientEnterWorld;
             SV_Client.OnClientThink         -= OnClientThink;

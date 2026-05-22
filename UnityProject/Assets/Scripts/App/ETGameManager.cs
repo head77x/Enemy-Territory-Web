@@ -772,6 +772,9 @@ namespace ET.App
             if (Input.GetKey(KeyCode.Z))        wbuttons |= WButton.Prone;
             cmd.WButtons = wbuttons;
 
+            if (Input.GetKeyDown(KeyCode.R))
+                Debug.Log($"[DriveLocalPlayer] R pressed → wbuttons=0x{wbuttons:X} (Reload={WButton.Reload}) weapon={ps.Weapon} weaponstate={ps.Weaponstate}");
+
             if (Input.GetMouseButton(0))
                 Debug.Log($"[DriveLocalPlayer] LMB pressed → buttons=0x{buttons:X} weapon={ps.Weapon} pmType={ps.PmType}");
 

@@ -1664,6 +1664,9 @@ namespace ET.Game
 
             bool reloadRequested = (_pm.Cmd.WButtons & WButton.Reload) != 0;
 
+            if (reloadRequested)
+                UnityEngine.Debug.Log($"[PM_CheckForReload] weapon={weapon} reloadReq={reloadRequested} weaponstate={ps.Weaponstate} weaponTime={ps.WeaponTime} noWeapClips={_pm.NoWeapClips}");
+
             switch (ps.Weaponstate)
             {
                 case GameConst.WEAPON_RAISING:
@@ -1705,9 +1708,12 @@ namespace ET.Game
 
                 if (reloadRequested)
                 {
+                    int maxClip = GetAmmoTableData(weapon).maxClip;
+                    UnityEngine.Debug.Log($"[PM_CheckForReload] clipWeap={clipWeap} ammoWeap={ammoWeap} clip={ps.AmmoClip[clipWeap]} maxClip={maxClip} reserve={ps.Ammo[ammoWeap]} autoreload={autoreload}");
+
                     if (ps.Ammo[ammoWeap] != 0)
                     {
-                        if (ps.AmmoClip[clipWeap] < GetAmmoTableData(weapon).maxClip)
+                        if (ps.AmmoClip[clipWeap] < maxClip)
                             doReload = true;
 
                         if (BG_IsAkimboWeapon(weapon))

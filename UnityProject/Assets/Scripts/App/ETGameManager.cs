@@ -505,10 +505,12 @@ namespace ET.App
                 Debug.Log($"[ETGameManager] Attached gun body to tag_weapon: {wri.ModelPath}");
             }
 
-            // CG_CalculateWeaponPosition: hand.origin = cg.refdef.vieworg (no offset by default),
-            // hand.axis = cg.refdef.viewaxis. Since handsGo is a child of _viewmodelRoot which
-            // is a child of _viewmodelCam (synced to main camera each frame), local = identity.
-            handsGo.transform.localPosition = Vector3.zero;
+            // CG_CalculateWeaponPosition: hand.origin = cg.refdef.vieworg.
+            // The MDC tag data places tag_weapon at camera-local z≈-2.4 (behind the camera
+            // origin), so we push the whole model forward by 3 units along the camera's
+            // Z axis (equivalent to cg_gunX=3 in ET) to keep all hand vertices in front
+            // of the near clip plane and visible to the player.
+            handsGo.transform.localPosition = new Vector3(0f, 0f, 3f);
             handsGo.transform.localRotation = Quaternion.identity;
             handsGo.transform.localScale    = Vector3.one;
 
@@ -560,9 +562,11 @@ namespace ET.App
                 var anims = animDataRef.Animations;
                 if (idx < 0 || idx >= anims.Length || anims[idx] == null) return 0;
                 var a = anims[idx];
-                // Looping animations (LoopFrames > 0) must NOT lock — return 0.
-                // One-shot animations lock for their full duration.
-                return a.LoopFrames > 0 ? 0 : a.NumFrames * a.FrameLerp;
+                // IDLE1 (0) and IDLE2 (1) must return 0 — idle never blocks attacks or reloads.
+                // All other animations (attack, reload, raise, drop) lock for their full
+                // duration so that PM_ContinueWeaponAnim cannot cut them short with idle.
+                if (idx <= 1) return 0;
+                return a.NumFrames * a.FrameLerp;
             };
 
             // Determine frame count. Tag-animated hands models use per-frame tag transforms
@@ -780,6 +784,8 @@ namespace ET.App
         //
         // For mesh models with blend shapes:
         //   Sets blend-shape weights to morph between oldFrame and frame.
+        private int _lastLoggedWeapAnim = -1;
+
         private void DriveViewmodelAnimation()
         {
             if (_viewmodelRoot == null || _viewmodelNumFrames <= 1) return;
@@ -789,6 +795,14 @@ namespace ET.App
             // Use Unity real-time (ms) as cg.time — ET client used client-predicted time
             // that advances every render frame, not server tick rate (50ms steps).
             int cgTime = Mathf.RoundToInt(Time.realtimeSinceStartup * 1000f);
+
+            // Log whenever weapAnim changes so we can confirm attack/idle transitions
+            if (weapAnim != _lastLoggedWeapAnim)
+            {
+                int idx = weapAnim & ~GameConst.ANIM_TOGGLEBIT;
+                Debug.Log($"[DriveViewmodelAnim] weapAnim changed → {weapAnim} (idx={idx}) cgTime={cgTime}");
+                _lastLoggedWeapAnim = weapAnim;
+            }
 
             if (_weapAnimData == null) return;
 
